@@ -1,0 +1,19 @@
+name: Lint dependencies (for licences, allowed sources, banned dependencies, vulnerabilities)
+on:
+  pull_request:
+    paths:
+      - '**/Cargo.toml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions: {}
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        persist-credentials: false
+    - uses: EmbarkStudios/cargo-deny-action@a531616d8ce3b9177443e48a1159bc945a099823 # v2.0.19
