@@ -9,11 +9,13 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@main
         with:
           submodules: recursive
       - name: Build
-        run: cd social-app-ios && swift build
+        run: cd social-app-ios && swift build --verbose
       - name: Test
-        run: cd social-app-ios && swift test
+        run: cd social-app-ios && swift test --verbose
