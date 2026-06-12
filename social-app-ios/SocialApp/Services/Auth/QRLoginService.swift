@@ -85,7 +85,7 @@ private init() {
         qrCodeData: String,
         oauthConfig: OAuthConfiguration
     ) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
 
         // 将扫描到的字符串转回 FFI QrCodeData
         let data = try QrCodeData.fromBytes(bytes: Data(qrCodeData.utf8))
@@ -126,7 +126,7 @@ private init() {
     /// 以授权登录模式开始：生成本设备二维码供他人扫描。
     /// FFI: `Client.newGrantLoginWithQrCodeHandler()` + `GrantLoginWithQrCodeHandler.generate(progressListener:)`
     func startGrantLogin() async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let handler = client.newGrantLoginWithQrCodeHandler()
         isActive = true
         progress = .waitingForScan
@@ -145,7 +145,7 @@ private init() {
     /// 生成 QR 码供另一设备扫码登录（服务端生成模式）
     /// FFI: `Client.newLoginWithQrCodeHandler(oauthConfiguration:)` + `LoginWithQrCodeHandler.generate(progressListener:)`
     func startQrCodeGeneration(oauthConfig: OAuthConfiguration) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let handler = client.newLoginWithQrCodeHandler(oauthConfiguration: oauthConfig)
         isActive = true
         progress = .waitingForScan
@@ -162,7 +162,7 @@ private init() {
     /// 二次授权时扫码确认（已登录设备扫描新设备 QR 码）
     /// FFI: `Client.newGrantLoginWithQrCodeHandler()` + `GrantLoginWithQrCodeHandler.scan(qrCodeData:progressListener:)`
     func startGrantScan(qrCodeData: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let data = try QrCodeData.fromBytes(bytes: Data(qrCodeData.utf8))
         let handler = client.newGrantLoginWithQrCodeHandler()
         isActive = true

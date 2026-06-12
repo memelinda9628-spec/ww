@@ -63,7 +63,7 @@ final class ThreadViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+            guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
             let room = try await client.getRoom(roomId: roomId)
             let items = room.threadListService().items()
             threads = items.compactMap { item in
@@ -113,7 +113,7 @@ final class ThreadViewModel: ObservableObject {
         defer { isLoadingMore = false }
 
         do {
-            guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+            guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
             let room = try await client.getRoom(roomId: roomId)
 
             let tls = room.threadListService()

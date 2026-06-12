@@ -124,7 +124,7 @@ private init() {}
         timeout: TimeInterval = 3600,
         description: String? = nil
     ) async throws -> LiveLocationShare {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         let geoUri = "geo:\(coordinate.latitude),\(coordinate.longitude)"
         let beaconId = try await room.startLiveLocationShare(durationMillis: UInt64(timeout * 1000))
@@ -154,7 +154,7 @@ private init() {}
 
     /// 停止实时位置共享 — 通过 room.stopLiveLocationShare() FFI
     func stopLiveLocationShare(beaconId: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         // 从 activeShares 获取 roomId
         guard let share = activeShares[beaconId] else {
             throw SocialFeedError.invalidState("未找到活跃的位置共享: \(beaconId)")
@@ -171,7 +171,7 @@ private init() {}
         coordinate: GeoCoordinate,
         beaconId: String? = nil
     ) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let targetBeaconId = beaconId ?? activeShares.keys.first
         guard let bid = targetBeaconId, let share = activeShares[bid] else {
             throw SocialFeedError.invalidState("没有活跃的位置共享")

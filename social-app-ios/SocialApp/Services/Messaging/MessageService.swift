@@ -91,7 +91,7 @@ private init() { loadMockData() }
     // MARK: - 消息列表
 
     func fetchMessages(roomId: String, page: Int = 0) async throws -> [ChatMessage] {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         let timeline = room.timeline()
         // TimelineListener 模式收集事件：
@@ -114,7 +114,7 @@ private init() { loadMockData() }
     }
 
     func fetchRooms() async throws -> [ChatRoom] {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let rooms = try await client.rooms()
         return rooms.map { room in
             let roomId = room.id()
@@ -138,7 +138,7 @@ private init() { loadMockData() }
     // MARK: - 发送消息
 
     func sendMessage(roomId: String, body: String, msgType: MessageType = .text) async throws -> String {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         let msgId = UUID().uuidString
         // m.room.message event type with JSON body
@@ -179,7 +179,7 @@ private init() { loadMockData() }
     }
 
     func redactMessage(roomId: String, messageId: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         try await room.redact(eventId: messageId, reason: nil)
     }
@@ -187,7 +187,7 @@ private init() { loadMockData() }
     // MARK: - 表情回应
 
     func sendReaction(roomId: String, messageId: String, emoji: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         try await room.timeline().toggleReaction(eventId: messageId, key: emoji)
     }
@@ -209,7 +209,7 @@ private init() { loadMockData() }
 
     /// 发送附件，直接调用 Rust FFI sendAttachment
     func sendAttachment(roomId: String, filename: String, mimeType: String, data: Data, caption: String? = nil) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         try await room.sendAttachment(filename: filename, mimeType: mimeType, data: data, caption: caption)
     }
@@ -227,7 +227,7 @@ private init() { loadMockData() }
     /// 2. 在 Timeline 中定位原消息的 EventTimelineItem，提取 extractedBody
     /// 3. 获取目标房间，通过 sendRaw(eventType:contentJson:) 重新发送
     func forwardMessage(fromRoomId: String, toRoomId: String, originalEventId: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
 
         // 1. 获取源房间的 Timeline，通过分页定位原消息
         let sourceRoom = try await client.getRoom(roomId: fromRoomId)
@@ -267,7 +267,7 @@ private init() { loadMockData() }
     }
 
     func markAsRead(roomId: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         try await room.timeline().markAsRead(receiptType: .read)
     }

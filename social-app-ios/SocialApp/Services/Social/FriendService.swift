@@ -23,7 +23,7 @@ final class FriendService: ObservableObject {
 
     func fetchFriends() async throws -> [Friend] {
         // 接入 Rust getDmRooms，映射 DM 房间为好友列表
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let dmRooms = try await client.getDmRooms()
         return dmRooms.map { room in
             let roomId = room.id()
@@ -62,7 +62,7 @@ final class FriendService: ObservableObject {
         // 2. 内存缓存
         if let friend = friendsById[userId] { return friend }
         // 3. FFI 获取（通过 searchUsers 按 userId 精确查找）
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let results = try await client.searchUsers(searchTerm: userId, limit: 1)
         if let profile = results.first {
             let friend = Friend(
@@ -107,7 +107,7 @@ final class FriendService: ObservableObject {
                        isOnline: false, lastSeen: nil)
             }
         }
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let results = try await client.searchUsers(searchTerm: keyword, limit: 20)
         var searchedUsers: [SearchedUser] = []
         for profile in results {
@@ -172,7 +172,7 @@ final class FriendService: ObservableObject {
     /// - Parameter userId: 目标用户的 Matrix ID
     /// - Returns: 创建的 roomId
     func createDm(with userId: String) async throws -> String {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.createDm(userId: userId)
         return room.id()
     }

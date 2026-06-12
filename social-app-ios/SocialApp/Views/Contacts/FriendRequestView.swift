@@ -138,7 +138,7 @@ final class FriendRequestViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+            guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
 
             // 从 Client.rooms() 过滤 invited direct rooms
             let allRooms = try await client.rooms()
@@ -163,7 +163,7 @@ final class FriendRequestViewModel: ObservableObject {
 
     func acceptRequest(_ request: FriendRequestInfo) async {
         do {
-            guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+            guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
             let room = try await client.getRoom(roomId: request.roomId)
             try await room.join()
             requests.removeAll { $0.id == request.id }
@@ -174,7 +174,7 @@ final class FriendRequestViewModel: ObservableObject {
 
     func declineRequest(_ request: FriendRequestInfo) async {
         do {
-            guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+            guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
             let room = try await client.getRoom(roomId: request.roomId)
             try await room.leave()
             requests.removeAll { $0.id == request.id }

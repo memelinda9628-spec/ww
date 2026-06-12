@@ -33,7 +33,7 @@ final class SocialFeedService: ObservableObject {
 
     /// 首次创建个人主页 Feed Room
     func createProfile(displayName: String, avatarMxcUri: String?, bio: String?, location: String?) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         try await client.setDisplayName(name: displayName)
         if let mxc = avatarMxcUri {
             try await client.setAvatarUrl(url: mxc)
@@ -78,12 +78,12 @@ final class SocialFeedService: ObservableObject {
 
     /// 设置头像 (mxc:// URI，由调用方用 SDK 上传后传入)
     func setAvatar(mxcUri: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         try await client.setAvatarUrl(url: mxcUri)
     }
 
     func updateBio(_ bio: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         if let feedRoomId = myProfile?.feedRoomId {
             let room = try await client.getRoom(roomId: feedRoomId)
             try await room.sendRaw(eventType: "m.room.topic", content: "{\"topic\":\"bio:\(bio)\"}")
@@ -91,7 +91,7 @@ final class SocialFeedService: ObservableObject {
     }
 
     func updateLocation(_ location: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         if let feedRoomId = myProfile?.feedRoomId {
             let room = try await client.getRoom(roomId: feedRoomId)
             try await room.sendRaw(eventType: "m.room.topic", content: "{\"topic\":\"location:\(location)\"}")
@@ -99,7 +99,7 @@ final class SocialFeedService: ObservableObject {
     }
 
     func updateDisplayName(_ name: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         try await client.setDisplayName(name: name)
     }
 
@@ -169,7 +169,7 @@ final class SocialFeedService: ObservableObject {
     /// 按 feed_room_id 获取单个用户的动态列表
     /// — 通过 TimelineListener + paginateBackwards 模式获取真实事件
     func userMoments(feedRoomId: String, pageSize: Int = 20) async throws -> FeedResult<[Moment]> {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: feedRoomId)
         let timeline = room.timeline()
         // TimelineListener 模式：paginateBackwards 仅返回 Bool，
@@ -206,7 +206,7 @@ final class SocialFeedService: ObservableObject {
     ///   - imageURLs: 本地图片 URL 列表（可选，最多 9 张）
     /// - 流程：上传图片获取 MXC URI → 构造 content JSON → sendRaw 发送
     func postMoment(text: String, imageURLs: [URL]) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
 
         // 上传图片获取 MXC URI 列表（走 ImageUploadService：压缩 → FFI uploadMedia）
@@ -247,7 +247,7 @@ final class SocialFeedService: ObservableObject {
     // MARK: - Like ───────────────────────────────────────────
 
     func toggleLike(momentId: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
         let room = try await client.getRoom(roomId: feedRoomId)
         try await room.timeline().toggleReaction(eventId: momentId, key: "👍")
@@ -256,7 +256,7 @@ final class SocialFeedService: ObservableObject {
     // MARK: - Comment ────────────────────────────────────────
 
     func comment(momentId: String, text: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
         let room = try await client.getRoom(roomId: feedRoomId)
         let contentJson = """
@@ -323,7 +323,7 @@ final class SocialFeedService: ObservableObject {
     // MARK: - Forward ────────────────────────────────────────
     /// 转发动态 — 通过 room.sendRaw() FFI 发送含 m.forward relation 的真实事件
     func forward(moment: Moment, quoteText: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
         let room = try await client.getRoom(roomId: feedRoomId)
 
@@ -345,7 +345,7 @@ final class SocialFeedService: ObservableObject {
     // MARK: - Social: Follow / Unfollow ──────────────────────
 
     func follow(userId: String, feedRoomId: String) async throws -> Bool {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: feedRoomId)
         try await room.join()
         followingIds.insert(userId)

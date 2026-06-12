@@ -20,7 +20,7 @@ final class RoomSettingsService: ObservableObject {
 
     /// 通过 roomId 获取 FFI Room 对象（getRoom 为同步 throws，返回 Room?）
     private func ffiRoom(roomId: String) throws -> Room {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         guard let room = try client.getRoom(roomId: roomId) else {
             throw SocialFeedError.roomNotFound("Room not found: \(roomId)")
         }

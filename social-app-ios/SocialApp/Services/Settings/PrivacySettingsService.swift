@@ -26,19 +26,19 @@ final class PrivacySettingsService: ObservableObject {
 
     /// 获取被忽略用户列表
     func getIgnoredUsers() async throws -> [String] {
-        guard let client = Self.ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
         return try await client.ignoredUsers()
     }
 
     /// 忽略指定用户
     func ignoreUser(userId: String) async throws {
-        guard let client = Self.ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
         try await client.ignoreUser(userId: userId)
     }
 
     /// 取消忽略指定用户
     func unignoreUser(userId: String) async throws {
-        guard let client = Self.ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
         try await client.unignoreUser(userId: userId)
     }
 
@@ -50,13 +50,13 @@ final class PrivacySettingsService: ObservableObject {
 
     /// 设置离开房间时是否遗忘
     func setForgetRoomWhenLeaving(_ forget: Bool) async throws {
-        guard let client = Self.ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
         try await client.forgetRoomWhenLeaving(forget: forget)
     }
 
     /// 获取离开时遗忘设置
     func getForgetRoomWhenLeaving() async throws -> Bool {
-        guard let client = Self.ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
         return client.forgetsRoomWhenLeaving()
     }
 

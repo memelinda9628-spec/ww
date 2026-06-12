@@ -92,7 +92,7 @@ private init() {}
         filter: RoomDirectorySearchFilter = RoomDirectorySearchFilter(),
         via server: String? = nil
     ) async throws -> [RoomDescription] {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         isLoading = true
         defer { isLoading = false }
 
@@ -129,7 +129,7 @@ private init() {}
     func nextPage() async throws -> [RoomDescription] {
         guard !isAtLastPage else { return [] }
 
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         isLoading = true
         defer { isLoading = false }
 

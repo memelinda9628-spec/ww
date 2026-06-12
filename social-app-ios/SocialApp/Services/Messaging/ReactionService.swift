@@ -73,7 +73,7 @@ private init() {}
         key: String,
         roomId: String
     ) async throws -> ReactionEvent {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         let timeline = room.timeline()
         try await timeline.toggleReaction(itemId: .eventId(eventId: eventId), key: key)

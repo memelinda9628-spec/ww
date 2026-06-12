@@ -94,7 +94,7 @@ private init() {}
 
     /// 刷新所有房间列表（从 FFI RoomListService 拉取）
     func refreshRooms() async throws -> [RoomListItem] {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let listService = client.roomListService()
         let rooms = try await listService.allRooms()
         let items = rooms.map { r in

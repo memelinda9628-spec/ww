@@ -78,7 +78,7 @@ private init() {}
         receiptType: ReceiptType = .read,
         roomId: String
     ) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         try await room.sendReadReceipt(receiptType: receiptType, eventId: eventId)
 
@@ -107,7 +107,7 @@ private init() {}
         roomId: String,
         receiptType: ReceiptType = .read
     ) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         try await room.markAsRead(receiptType: receiptType)
 

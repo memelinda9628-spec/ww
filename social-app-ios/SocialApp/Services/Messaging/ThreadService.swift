@@ -57,7 +57,7 @@ private init() {}
     // MARK: - Thread CRUD
 
     func fetchThreads(roomId: String) async throws -> [Thread] {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         let tls = room.threadListService()
         return tls.items().map { item in

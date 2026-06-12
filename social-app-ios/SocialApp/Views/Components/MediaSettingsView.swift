@@ -153,7 +153,7 @@ final class MediaSettingsViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+            guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
 
             let policy = try await client.getMediaPreviewDisplayPolicy()
             let config = try await client.fetchMediaPreviewConfig()

@@ -74,7 +74,7 @@ private init() { loadMockData() }
     }
 
     func createPoll(roomId: String, question: String, answers: [String], maxSelections: UInt8, kind: PollKind) async throws -> Poll {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         try await room.timeline().createPoll(question: question, answers: answers, maxSelections: maxSelections, kind: kind)
         let poll = Poll(
@@ -114,7 +114,7 @@ private init() { loadMockData() }
             throw SocialFeedError.notFound("pollStartId 未找到，请先调用 createPoll 或 startPollTracking")
         }
 
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         // 通过 pollStartId 定位所在房间：从 pollsByRoom 反查 roomId
         var targetRoomId: String?
         for (roomId, polls) in pollsByRoom {
@@ -253,7 +253,7 @@ private init() { loadMockData() }
     /// 事件通过 TimelineEventCollector.onUpdate(diff:) 回调收集，
     /// 然后在 Swift 侧筛选 eventTypeRaw == "m.poll.start" 的事件并提取 poll_id。
     func startPollTracking(roomId: String) async throws {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let room = try await client.getRoom(roomId: roomId)
         let timeline = room.timeline()
 

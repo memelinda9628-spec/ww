@@ -84,7 +84,7 @@ final class MessageSearchService: ObservableObject {
         filter: MessageSearchFilter = .all,
         pagination: SearchPagination = SearchPagination()
     ) async throws -> MessageSearchResult {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         isSearching = true
         defer { isSearching = false }
 
@@ -138,7 +138,7 @@ final class MessageSearchService: ObservableObject {
         query: String,
         pagination: SearchPagination = SearchPagination()
     ) async throws -> RoomSearchResult {
-        guard let client = ffiClient else { throw SocialFeedError.notInitialized }
+        guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         guard let room = try? await client.getRoom(roomId: roomId) else {
             throw SocialFeedError.roomNotFound
         }

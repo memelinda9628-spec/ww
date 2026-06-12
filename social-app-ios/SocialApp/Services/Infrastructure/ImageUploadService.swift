@@ -31,7 +31,7 @@ final class ImageUploadService: @unchecked Sendable {
         }
 
         guard let client = ffiClient else {
-            throw SocialFeedError.notInitialized
+            throw SocialFeedError.clientNotInitialized
         }
 
         // 2. 压缩图片（若尺寸超限则等比缩放并以 JPEG 重编码，否则返回原 URL）
