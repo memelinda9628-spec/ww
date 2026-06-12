@@ -1,0 +1,18 @@
+# Xcode
+*.xcuserdata
+*.xcworkspace
+DerivedData/
+build/
+
+# CocoaPods
+Pods/
+
+# SPM
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Secrets
+Secrets/
