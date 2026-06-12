@@ -1,3 +1,14 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: 962bf721db6534c0bb69c381149ce2ef_7fa0c2fc666911f1aa625254006c9bbf
+    ReservedCode1: 4Ta3HorrMEcthbRyX3eU0T47Vu6DSc0fDgsuhApMEwTkfXycqXmi/YHSYeHitAVdvjosrh2avWLgN8SvBFU94BG7dY+loP1ibQWZL5kLvrmpqraEEKOHwzSTt0p2GI99rQWWn3+6l5f57mxvb3/GM+To0cXdjywEsGLauAz25jUWsxWeE+vCz6NTo3M=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: 962bf721db6534c0bb69c381149ce2ef_7fa0c2fc666911f1aa625254006c9bbf
+    ReservedCode2: 4Ta3HorrMEcthbRyX3eU0T47Vu6DSc0fDgsuhApMEwTkfXycqXmi/YHSYeHitAVdvjosrh2avWLgN8SvBFU94BG7dY+loP1ibQWZL5kLvrmpqraEEKOHwzSTt0p2GI99rQWWn3+6l5f57mxvb3/GM+To0cXdjywEsGLauAz25jUWsxWeE+vCz6NTo3M=
+---
+
 # QrCodeData 编译错误修复说明
 
 ## 问题
@@ -45,3 +56,4 @@ social-app-ios/
 - Commit: `bbf7dbf`
 - Message: `将 Generated/ FFI 绑定移入 SocialApp/ target 根目录，修复 SPM 编译范围`
 - 已推送至 `origin/main`
+*（内容由AI生成，仅供参考）*
