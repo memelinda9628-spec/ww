@@ -14,18 +14,4 @@ cargo_check.log
 .kiro/
 .workbuddy/
 
-# Scripts
-regini-disable.bat
 
-# IDE config
-settings.json
-
-# Generated FFI code
-social-app-ios/Generated/
-
-# Audit reports
-social-app-ios/FFI_Audit_Report.md
-social-app-ios/TODO_FFI_AUDIT.md
-
-# Build artifacts
-target/
