@@ -7,14 +7,33 @@ let package = Package(
     products: [
         .library(name: "SocialApp", targets: ["SocialApp"])
     ],
-    dependencies: [
-        // matrix-rust-sdk FFI bindings
-        // .package(path: "../matrix-rust-sdk")
-    ],
+    dependencies: [],
     targets: [
         .target(
             name: "SocialApp",
-            path: "SocialApp"
-        )
+            dependencies: [
+                "matrix_sdk_ffiFFI",
+                "matrix_sdkFFI",
+                "matrix_sdk_baseFFI",
+                "matrix_sdk_commonFFI",
+                "matrix_sdk_cryptoFFI",
+                "matrix_sdk_uiFFI"
+            ],
+            path: "SocialApp",
+            exclude: [
+                "Generated/matrix_sdk_ffi/include",
+                "Generated/matrix_sdk/include",
+                "Generated/matrix_sdk_base/include",
+                "Generated/matrix_sdk_common/include",
+                "Generated/matrix_sdk_crypto/include",
+                "Generated/matrix_sdk_ui/include"
+            ]
+        ),
+        .target(name: "matrix_sdk_ffiFFI", path: "SocialApp/Generated/matrix_sdk_ffi"),
+        .target(name: "matrix_sdkFFI", path: "SocialApp/Generated/matrix_sdk"),
+        .target(name: "matrix_sdk_baseFFI", path: "SocialApp/Generated/matrix_sdk_base"),
+        .target(name: "matrix_sdk_commonFFI", path: "SocialApp/Generated/matrix_sdk_common"),
+        .target(name: "matrix_sdk_cryptoFFI", path: "SocialApp/Generated/matrix_sdk_crypto"),
+        .target(name: "matrix_sdk_uiFFI", path: "SocialApp/Generated/matrix_sdk_ui")
     ]
 )
