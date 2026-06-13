@@ -1,4 +1,4 @@
-#include "include/matrix_sdk_cryptoFFI.h"
+#include "matrix_sdk_cryptoFFI.h"
 
 uint64_t uniffi_matrix_sdk_crypto_fn_clone_backupsecrets(uint64_t handle, RustCallStatus *_Nonnull out_status
 ) {

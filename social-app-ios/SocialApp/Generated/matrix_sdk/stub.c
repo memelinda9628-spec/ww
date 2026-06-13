@@ -1,4 +1,4 @@
-#include "include/matrix_sdkFFI.h"
+#include "matrix_sdkFFI.h"
 
 uint64_t uniffi_matrix_sdk_fn_clone_oauthauthorizationdata(uint64_t handle, RustCallStatus *_Nonnull out_status
 ) {

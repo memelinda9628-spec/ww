@@ -1,4 +1,4 @@
-#include "include/matrix_sdk_ffiFFI.h"
+#include "matrix_sdk_ffiFFI.h"
 
 uint64_t uniffi_matrix_sdk_ffi_fn_clone_roommessageeventcontentwithoutrelation(uint64_t handle, RustCallStatus *_Nonnull out_status
 ) {
