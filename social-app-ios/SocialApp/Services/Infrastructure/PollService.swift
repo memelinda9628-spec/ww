@@ -140,7 +140,7 @@ private init() { loadMockData() }
             if let idx = polls.firstIndex(where: { $0.id == pollId }) {
                 var poll = polls[idx]
                 guard !poll.isClosed else {
-                    throw SocialFeedError.invalidJson("投票已关闭")
+                    throw SocialFeedError.invalidState("投票已关闭")
                 }
                 // 单选时替换已有投票
                 if poll.hasVoted && !poll.allowsMultiple {
@@ -183,7 +183,7 @@ private init() { loadMockData() }
             if let idx = polls.firstIndex(where: { $0.id == pollId }) {
                 var poll = polls[idx]
                 guard !poll.isClosed else {
-                    throw SocialFeedError.invalidJson("投票已关闭")
+                    throw SocialFeedError.invalidState("投票已关闭")
                 }
                 for optionId in poll.myVote {
                     if let optIdx = poll.options.firstIndex(where: { $0.id == optionId }) {
