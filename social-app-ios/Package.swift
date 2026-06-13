@@ -21,11 +21,11 @@ let package = Package(
             ],
             path: "SocialApp"
         ),
-        .target(name: "matrix_sdk_ffiFFI", path: "FFI/matrix_sdk_ffi"),
-        .target(name: "matrix_sdkFFI", path: "FFI/matrix_sdk"),
-        .target(name: "matrix_sdk_baseFFI", path: "FFI/matrix_sdk_base"),
-        .target(name: "matrix_sdk_commonFFI", path: "FFI/matrix_sdk_common"),
-        .target(name: "matrix_sdk_cryptoFFI", path: "FFI/matrix_sdk_crypto"),
-        .target(name: "matrix_sdk_uiFFI", path: "FFI/matrix_sdk_ui")
+        .target(name: "matrix_sdk_ffiFFI", path: "MatrixFFI/matrix_sdk_ffi"),
+        .target(name: "matrix_sdkFFI", path: "MatrixFFI/matrix_sdk"),
+        .target(name: "matrix_sdk_baseFFI", path: "MatrixFFI/matrix_sdk_base"),
+        .target(name: "matrix_sdk_commonFFI", path: "MatrixFFI/matrix_sdk_common"),
+        .target(name: "matrix_sdk_cryptoFFI", path: "MatrixFFI/matrix_sdk_crypto"),
+        .target(name: "matrix_sdk_uiFFI", path: "MatrixFFI/matrix_sdk_ui")
     ]
 )

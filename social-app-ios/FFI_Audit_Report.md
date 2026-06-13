@@ -27,6 +27,8 @@ AIGC:
 | **模块映射 (.modulemap)** | 同上 6 个 | 136~150 B | Swift/Clang 模块定义 |
 | **Swift 绑定 (.swift)** | matrix_sdk.swift, matrix_sdk_base.swift, matrix_sdk_common.swift, matrix_sdk_crypto.swift, matrix_sdk_ui.swift, matrix_sdk_ffi.swift | 23~1,797 KB | Swift API 实现 |
 
+> **2026-06-13 更新**: C target 文件已从 `SocialApp/Generated/` 迁移至独立目录 `MatrixFFI/`（6 个子目录），与 Swift 文件隔离。Package.swift 中 C target 的 path 从 `FFI/` 重命名为 `MatrixFFI/`（更语义化）。详情见 commit eeaa7fb。
+
 ### 核心发现：matrix_sdk_ffi.swift 占绝对主导
 
 | 指标 | matrix_sdk_ffi.swift | 其余 5 个文件合计 |

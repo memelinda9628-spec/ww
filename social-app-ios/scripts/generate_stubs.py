@@ -7,7 +7,7 @@
 """
 import os, re, sys
 
-FFI_DIR = "FFI"
+FFI_DIR = "MatrixFFI"
 SHARED_FUNCTIONS = """
 // === 共享 FFI 函数 (UniFFI 运行时依赖，必须存在) ===
 RustBuffer ffi_{module}_rustbuffer_from_bytes(ForeignBytes bytes, RustCallStatus *_Nonnull out_status

@@ -6,9 +6,9 @@
 #
 # 产出：
 #   SocialApp/Generated/*.swift               → Swift 绑定（纯文本，SPM 直接编译）
-#   FFI/{module}/include/{module}FFI.h         → C header
-#   FFI/{module}/include/module.modulemap      → modulemap
-#   FFI/{module}/stub.c                        → C 桩实现（自动注入 3 个共享函数）
+#   MatrixFFI/{module}/include/{module}FFI.h    → C header
+#   MatrixFFI/{module}/include/module.modulemap → modulemap
+#   MatrixFFI/{module}/stub.c                   → C 桩实现（自动注入 3 个共享函数）
 #
 # 用法：
 #   cd social-app-ios
@@ -32,7 +32,7 @@ MODULES=(
 )
 
 SWIFT_OUT="${PROJECT_DIR}/SocialApp/Generated"
-FFI_OUT="${PROJECT_DIR}/FFI"
+FFI_OUT="${PROJECT_DIR}/MatrixFFI"
 
 echo "=== 源目录: ${GEN_DIR} ==="
 
