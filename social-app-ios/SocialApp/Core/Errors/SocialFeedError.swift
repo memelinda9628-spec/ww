@@ -36,6 +36,7 @@ enum SocialFeedError: Error, LocalizedError, Sendable {
     case invalidUrl(String)
 
     // MARK: Media
+    case quotaExceeded
     case mediaTooLarge(Int64, Int64) // actual, limit
     case unsupportedMediaType(String)
     case mediaUploadFailed(String)
@@ -86,6 +87,8 @@ enum SocialFeedError: Error, LocalizedError, Sendable {
             return "无效 URL: \(url)"
         case .mediaTooLarge(let actual, let limit):
             return "媒体过大: \(actual) bytes (限制 \(limit) bytes)"
+        case .quotaExceeded:
+            return "超出配额上限"
         case .unsupportedMediaType(let type):
             return "不支持的媒体类型: \(type)"
         case .mediaUploadFailed(let detail):

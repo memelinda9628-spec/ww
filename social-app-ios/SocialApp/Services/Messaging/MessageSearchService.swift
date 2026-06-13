@@ -140,7 +140,7 @@ final class MessageSearchService: ObservableObject {
     ) async throws -> RoomSearchResult {
         guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         guard let room = try? await client.getRoom(roomId: roomId) else {
-            throw SocialFeedError.roomNotFound
+            throw SocialFeedError.roomNotFound(roomId)
         }
 
         let result = try await room.searchMessages(query: query)

@@ -64,7 +64,7 @@ final class FriendService: ObservableObject {
         // 3. FFI 获取（通过 searchUsers 按 userId 精确查找）
         guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let results = try await client.searchUsers(searchTerm: userId, limit: 1)
-        if let profile = results.first {
+        if let profile = results.results.first {
             let friend = Friend(
                 id: profile.userId, userId: profile.userId,
                 displayName: profile.displayName,
@@ -82,7 +82,7 @@ final class FriendService: ObservableObject {
             AppContainer.shared.profileCache.set(userId: profile.userId, profile: userProfile)
             return friend
         }
-        throw SocialFeedError.profileNotFound
+        throw SocialFeedError.profileNotFound(userId)
     }
 
     // MARK: - 搜索好友
@@ -110,7 +110,7 @@ final class FriendService: ObservableObject {
         guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
         let results = try await client.searchUsers(searchTerm: keyword, limit: 20)
         var searchedUsers: [SearchedUser] = []
-        for profile in results {
+        for profile in results.results {
             let dmRoom = try? client.getDmRoom(userId: profile.userId)
             let isFriend: Bool
             let roomId: String?
