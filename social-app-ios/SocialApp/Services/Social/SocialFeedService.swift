@@ -207,7 +207,7 @@ final class SocialFeedService: ObservableObject {
     /// - 流程：上传图片获取 MXC URI → 构造 content JSON → sendRaw 发送
     func postMoment(text: String, imageURLs: [URL]) async throws {
         guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
+        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound(myProfile?.userId ?? "unknown") }
 
         // 上传图片获取 MXC URI 列表（走 ImageUploadService：压缩 → FFI uploadMedia）
         var mxcUris: [String] = []
@@ -248,7 +248,7 @@ final class SocialFeedService: ObservableObject {
 
     func toggleLike(momentId: String) async throws {
         guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
+        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound(myProfile?.userId ?? "unknown") }
         let room = try await client.getRoom(roomId: feedRoomId)
         try await room.timeline().toggleReaction(eventId: momentId, key: "👍")
     }
@@ -257,7 +257,7 @@ final class SocialFeedService: ObservableObject {
 
     func comment(momentId: String, text: String) async throws {
         guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
+        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound(myProfile?.userId ?? "unknown") }
         let room = try await client.getRoom(roomId: feedRoomId)
         let contentJson = """
         {"msgtype":"m.text","body":"\(text)","m.relates_to":{"m.in_reply_to":{"event_id":"\(momentId)"}}}
@@ -324,7 +324,7 @@ final class SocialFeedService: ObservableObject {
     /// 转发动态 — 通过 room.sendRaw() FFI 发送含 m.forward relation 的真实事件
     func forward(moment: Moment, quoteText: String) async throws {
         guard let client = ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound }
+        guard let feedRoomId = myProfile?.feedRoomId else { throw SocialFeedError.profileNotFound(myProfile?.userId ?? "unknown") }
         let room = try await client.getRoom(roomId: feedRoomId)
 
         let escapedMomentText = moment.text

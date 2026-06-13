@@ -27,28 +27,28 @@ final class LocationShareService: ObservableObject {
     /// 开始实时位置共享
     func startLiveLocationShare(geoUri: String, timeoutMs: UInt64, roomId: String) async throws {
         guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound }
+        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound(roomId) }
         try await room.startLiveLocationShare(geoUri: geoUri, timeout: timeoutMs)
     }
 
     /// 停止实时位置共享
     func stopLiveLocationShare(roomId: String) async throws {
         guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound }
+        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound(roomId) }
         try await room.stopLiveLocationShare()
     }
 
     /// 发送位置更新
     func sendLiveLocation(geoUri: String, roomId: String) async throws {
         guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound }
+        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound(roomId) }
         try await room.sendLiveLocation(geoUri: geoUri)
     }
 
     /// 获取位置观察者
     func getLiveLocationsObserver(roomId: String) async throws -> LiveLocationsObserver? {
         guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
-        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound }
+        guard let room = try? await client.getRoom(roomId: roomId) else { throw SocialFeedError.roomNotFound(roomId) }
         return room.liveLocationsObserver()
     }
 

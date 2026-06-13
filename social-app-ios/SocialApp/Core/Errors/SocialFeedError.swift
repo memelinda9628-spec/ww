@@ -1,16 +1,21 @@
 // MARK: - SocialFeedError
-/// 22 种错误变体，镜像 Rust social-feed error.rs
+/// 镜像 Rust social-feed error.rs（22 基础变体 + Swift 业务扩展）
 
 import Foundation
 
 enum SocialFeedError: Error, LocalizedError, Sendable {
     // MARK: Client / Connection
     case clientNotInitialized
+    case tokenExpired
     case connectionFailed(String)
     case timeout
+    case networkError(String)
+    case syncError(String)
 
     // MARK: Room
     case roomNotFound(String)
+    case invalidFeedRoom
+    case eventNotFound
     case roomAlreadyExists(String)
     case notRoomMember(String)
 
@@ -41,20 +46,40 @@ enum SocialFeedError: Error, LocalizedError, Sendable {
     case unsupportedMediaType(String)
     case mediaUploadFailed(String)
 
+    // MARK: Not Found / State / Rate
+    case notFound(String)
+    case invalidJson(String)
+    case invalidState(String)
+    case cyclicDependency
+    case rateLimited(retryAfterMs: UInt64)
+    case internalError(String)
+    case encryptionNotAvailable
+
     // MARK: Other
     case permissionDenied(String)
+    case sdkError(String)
     case unknown(String)
 
     var errorDescription: String? {
         switch self {
         case .clientNotInitialized:
             return "客户端未初始化"
+        case .tokenExpired:
+            return "认证令牌已过期，请重新登录"
         case .connectionFailed(let detail):
             return "连接失败: \(detail)"
+        case .networkError(let detail):
+            return "网络错误: \(detail)"
+        case .syncError(let detail):
+            return "同步失败: \(detail)"
         case .timeout:
             return "请求超时"
         case .roomNotFound(let id):
             return "房间未找到: \(id)"
+        case .invalidFeedRoom:
+            return "无效的 feed Room"
+        case .eventNotFound:
+            return "事件不存在"
         case .roomAlreadyExists(let id):
             return "房间已存在: \(id)"
         case .notRoomMember(let id):
@@ -93,8 +118,24 @@ enum SocialFeedError: Error, LocalizedError, Sendable {
             return "不支持的媒体类型: \(type)"
         case .mediaUploadFailed(let detail):
             return "媒体上传失败: \(detail)"
+        case .notFound(let detail):
+            return "未找到: \(detail)"
+        case .invalidJson(let detail):
+            return "无效 JSON: \(detail)"
+        case .invalidState(let detail):
+            return "无效状态: \(detail)"
+        case .cyclicDependency:
+            return "检测到循环依赖"
+        case .rateLimited(retryAfterMs: let ms):
+            return "请求被限流，请在 \(ms)ms 后重试"
+        case .internalError(let detail):
+            return "内部错误: \(detail)"
+        case .encryptionNotAvailable:
+            return "加密功能不可用"
         case .permissionDenied(let detail):
             return "权限不足: \(detail)"
+        case .sdkError(let detail):
+            return "SDK 错误: \(detail)"
         case .unknown(let detail):
             return "未知错误: \(detail)"
         }
