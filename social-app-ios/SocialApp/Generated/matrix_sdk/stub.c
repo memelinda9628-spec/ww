@@ -24,3 +24,20 @@ uint16_t uniffi_matrix_sdk_checksum_method_oauthauthorizationdata_login_url(void
     return 0;
 }
 
+
+RustBuffer ffi_matrix_sdk_rustbuffer_from_bytes(ForeignBytes bytes, RustCallStatus *_Nonnull out_status
+) {
+    // Stub: return empty buffer
+    return (RustBuffer){0};
+}
+
+void ffi_matrix_sdk_rustbuffer_free(RustBuffer buf, RustCallStatus *_Nonnull out_status
+) {
+    // Stub
+}
+
+uint32_t ffi_matrix_sdk_uniffi_contract_version(void
+) {
+    // Stub: return version 0
+    return 0;
+}

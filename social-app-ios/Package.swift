@@ -19,15 +19,7 @@ let package = Package(
                 "matrix_sdk_cryptoFFI",
                 "matrix_sdk_uiFFI"
             ],
-            path: "SocialApp",
-            exclude: [
-                "Generated/matrix_sdk_ffi",
-                "Generated/matrix_sdk",
-                "Generated/matrix_sdk_base",
-                "Generated/matrix_sdk_common",
-                "Generated/matrix_sdk_crypto",
-                "Generated/matrix_sdk_ui"
-            ]
+            path: "SocialApp"
         ),
         .target(name: "matrix_sdk_ffiFFI", path: "SocialApp/Generated/matrix_sdk_ffi"),
         .target(name: "matrix_sdkFFI", path: "SocialApp/Generated/matrix_sdk"),
