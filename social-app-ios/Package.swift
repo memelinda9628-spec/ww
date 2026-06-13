@@ -19,21 +19,13 @@ let package = Package(
                 "matrix_sdk_cryptoFFI",
                 "matrix_sdk_uiFFI"
             ],
-            path: "SocialApp",
-            exclude: [
-                "Generated/matrix_sdk_ffi",
-                "Generated/matrix_sdk",
-                "Generated/matrix_sdk_base",
-                "Generated/matrix_sdk_common",
-                "Generated/matrix_sdk_crypto",
-                "Generated/matrix_sdk_ui"
-            ]
+            path: "SocialApp"
         ),
-        .target(name: "matrix_sdk_ffiFFI", path: "SocialApp/Generated/matrix_sdk_ffi"),
-        .target(name: "matrix_sdkFFI", path: "SocialApp/Generated/matrix_sdk"),
-        .target(name: "matrix_sdk_baseFFI", path: "SocialApp/Generated/matrix_sdk_base"),
-        .target(name: "matrix_sdk_commonFFI", path: "SocialApp/Generated/matrix_sdk_common"),
-        .target(name: "matrix_sdk_cryptoFFI", path: "SocialApp/Generated/matrix_sdk_crypto"),
-        .target(name: "matrix_sdk_uiFFI", path: "SocialApp/Generated/matrix_sdk_ui")
+        .target(name: "matrix_sdk_ffiFFI", path: "FFI/matrix_sdk_ffi"),
+        .target(name: "matrix_sdkFFI", path: "FFI/matrix_sdk"),
+        .target(name: "matrix_sdk_baseFFI", path: "FFI/matrix_sdk_base"),
+        .target(name: "matrix_sdk_commonFFI", path: "FFI/matrix_sdk_common"),
+        .target(name: "matrix_sdk_cryptoFFI", path: "FFI/matrix_sdk_crypto"),
+        .target(name: "matrix_sdk_uiFFI", path: "FFI/matrix_sdk_ui")
     ]
 )
