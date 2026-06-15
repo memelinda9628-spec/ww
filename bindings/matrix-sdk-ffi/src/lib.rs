@@ -27,6 +27,7 @@ mod runtime;
 #[cfg(feature = "experimental-search")]
 mod search;
 mod session_verification;
+mod social_feed;
 mod spaces;
 mod store;
 mod sync_service;

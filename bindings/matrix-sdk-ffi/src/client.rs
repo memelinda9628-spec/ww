@@ -80,7 +80,6 @@ use ruma::{
             discovery::get_authorization_server_metadata::v1::{
                 AccountManagementActionData, DeviceDeleteData, DeviceViewData,
             },
-            profile::{AvatarUrl, DisplayName},
             room::create_room::{RoomPowerLevelsContentOverride, v3::CreationContent},
             uiaa::{EmailUserIdentifier, UserIdentifier},
         },
@@ -139,6 +138,7 @@ use crate::{
     room::{RoomHistoryVisibility, RoomInfoListener, RoomSendQueueUpdate},
     room_directory_search::RoomDirectorySearch,
     room_preview::RoomPreview,
+    social_feed::UserProfile,
     ruma::{
         AccountDataEvent, AccountDataEventType, AuthData, InviteAvatars, MediaPreviewConfig,
         MediaPreviews, MediaSource, RoomAccountDataEvent, RoomAccountDataEventType,
@@ -1618,6 +1618,39 @@ impl Client {
         Ok(dms)
     }
 
+    /// Create a DM room with the given user, establishing a direct messaging
+    /// relationship. This creates an encrypted, invite-only room with
+    /// `is_direct=true` and the `TrustedPrivateChat` preset.
+    pub async fn create_dm(&self, user_id: String) -> Result<Arc<Room>, ClientError> {
+        let user_id = UserId::parse(user_id)?;
+        let sdk_room = self.inner.create_dm(&user_id).await?;
+        let room = Arc::new(Room::new(sdk_room, self.utd_hook_manager.get().cloned()));
+        Ok(room)
+    }
+
+    /// Change the password of the current account.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_password` - The new password to set.
+    ///
+    /// * `auth_data` - Optional authentication data for User-Interactive
+    ///   Authentication (UIAA). The first call should pass `None`; if the
+    ///   server responds with a UIAA challenge, retry with the appropriate
+    ///   `AuthData`.
+    pub async fn change_password(
+        &self,
+        new_password: String,
+        auth_data: Option<AuthData>,
+    ) -> Result<(), ClientError> {
+        let auth = auth_data.map(crate::ruma::AuthData::into);
+        self.inner
+            .account()
+            .change_password(&new_password, auth.as_ref().cloned())
+            .await?;
+        Ok(())
+    }
+
     pub async fn search_users(
         &self,
         search_term: String,
@@ -1629,7 +1662,7 @@ impl Client {
 
     pub async fn get_profile(&self, user_id: String) -> Result<UserProfile, ClientError> {
         let user_id = <&UserId>::try_from(user_id.as_str())?;
-        UserProfile::fetch(&self.inner.account(), user_id).await
+        crate::social_feed::fetch_user_profile(&self.inner.account(), user_id).await
     }
 
     pub async fn notification_client(
@@ -2440,35 +2473,6 @@ impl From<search_users::v3::Response> for SearchUsersResults {
     fn from(value: search_users::v3::Response) -> Self {
         let results: Vec<UserProfile> = value.results.iter().map(UserProfile::from).collect();
         SearchUsersResults { results, limited: value.limited }
-    }
-}
-
-#[derive(uniffi::Record)]
-pub struct UserProfile {
-    pub user_id: String,
-    pub display_name: Option<String>,
-    pub avatar_url: Option<String>,
-}
-
-impl UserProfile {
-    /// Fetch the profile for the given user ID, using the given [`Account`]
-    /// API.
-    pub(crate) async fn fetch(account: &Account, user_id: &UserId) -> Result<Self, ClientError> {
-        let response = account.fetch_user_profile_of(user_id).await?;
-        let display_name = response.get_static::<DisplayName>()?;
-        let avatar_url = response.get_static::<AvatarUrl>()?.map(|url| url.to_string());
-
-        Ok(UserProfile { user_id: user_id.to_string(), display_name, avatar_url })
-    }
-}
-
-impl From<&search_users::v3::User> for UserProfile {
-    fn from(value: &search_users::v3::User) -> Self {
-        UserProfile {
-            user_id: value.user_id.to_string(),
-            display_name: value.display_name.clone(),
-            avatar_url: value.avatar_url.as_ref().map(|url| url.to_string()),
-        }
     }
 }
 
