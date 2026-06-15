@@ -11,18 +11,18 @@ FFI_DIR = "MatrixFFI"
 SHARED_FUNCTIONS = """
 // === 共享 FFI 函数 (UniFFI 运行时依赖，必须存在) ===
 RustBuffer ffi_{module}_rustbuffer_from_bytes(ForeignBytes bytes, RustCallStatus *_Nonnull out_status
-) {
+) {{
     return (RustBuffer){{0}};
-}
+}}
 
 void ffi_{module}_rustbuffer_free(RustBuffer buf, RustCallStatus *_Nonnull out_status
-) {
-}
+) {{
+}}
 
 uint32_t ffi_{module}_uniffi_contract_version(void
-) {
+) {{
     return 0;
-}
+}}
 """
 
 def extract_function_declarations(header_path):

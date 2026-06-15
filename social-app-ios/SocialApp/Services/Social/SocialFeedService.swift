@@ -60,13 +60,13 @@ final class SocialFeedService: ObservableObject {
                 return n.contains("个人主页") || n.contains("Feed") || n.contains("feed")
             }
             let profile = UserProfile(
-                id: userId, userId: userId,
+                userId: userId,
                 displayName: name,
-                avatarUrl: avatar.flatMap { URL(string: $0) },
+                avatarUrl: avatar,
                 bio: nil, location: nil,
-                feedRoomId: feedRoom?.id(),
+                feedRoomId: feedRoom?.id() ?? "",
                 followerCount: 0,
-                followingCount: dmRooms?.count ?? 0,
+                followingCount: UInt64(dmRooms?.count ?? 0),
                 momentsCount: 0
             )
             myProfile = profile
@@ -394,11 +394,11 @@ final class SocialFeedService: ObservableObject {
 
     private func rebuildProfile(bio: String?, location: String?) -> UserProfile {
         UserProfile(
-            id: myProfile?.id ?? "", userId: myProfile?.userId ?? "",
+            userId: myProfile?.userId ?? "",
             displayName: myProfile?.displayName ?? "",
             avatarUrl: myProfile?.avatarUrl,
             bio: bio, location: location,
-            feedRoomId: myProfile?.feedRoomId,
+            feedRoomId: myProfile?.feedRoomId ?? "",
             followerCount: myProfile?.followerCount ?? 0,
             followingCount: myProfile?.followingCount ?? 0,
             momentsCount: myProfile?.momentsCount ?? 0

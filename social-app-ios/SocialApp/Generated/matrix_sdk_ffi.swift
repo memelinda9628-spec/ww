@@ -3899,6 +3899,8 @@ public protocol ClientBuilderProtocol: AnyObject, Sendable {
     
     func dmRoomDefinition(dmRoomDefinition: DmRoomDefinition)  -> ClientBuilder
     
+    func enableContentScanner(scannerUrl: String)  -> ClientBuilder
+    
     /**
      * Set whether to enable the experimental support for sending and receiving
      * encrypted room history on invite, per [MSC4268].
@@ -4164,6 +4166,15 @@ open func dmRoomDefinition(dmRoomDefinition: DmRoomDefinition) -> ClientBuilder 
     uniffi_matrix_sdk_ffi_fn_method_clientbuilder_dm_room_definition(
             self.uniffiCloneHandle(),
         FfiConverterTypeDmRoomDefinition_lower(dmRoomDefinition),$0
+    )
+})
+}
+    
+open func enableContentScanner(scannerUrl: String) -> ClientBuilder  {
+    return try!  FfiConverterTypeClientBuilder_lift(try! rustCall() {
+    uniffi_matrix_sdk_ffi_fn_method_clientbuilder_enable_content_scanner(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(scannerUrl),$0
     )
 })
 }
@@ -9001,22 +9012,6 @@ public protocol RoomProtocol: AnyObject, Sendable {
     func saveComposerDraft(draft: ComposerDraft, threadRoot: String?) async throws 
     
     /**
-     * Send an attachment (file, image, video, audio) to the room.
-     *
-     * # Arguments
-     *
-     * * `filename` - The file name of the attachment.
-     *
-     * * `mime_type` - The MIME type string (e.g. "image/png",
-     * "application/pdf").
-     *
-     * * `data` - The raw bytes of the attachment.
-     *
-     * * `caption` - An optional caption for the attachment.
-     */
-    func sendAttachment(filename: String, mimeType: String, data: Data, caption: String?) async throws 
-    
-    /**
      * Send the current users live location beacon in the room.
      */
     func sendLiveLocation(geoUri: String) async throws 
@@ -9031,17 +9026,6 @@ public protocol RoomProtocol: AnyObject, Sendable {
      * * `content` - The content of the event to send encoded as JSON string.
      */
     func sendRaw(eventType: String, content: String) async throws 
-    
-    /**
-     * Send a read receipt of the given type for the given event.
-     *
-     * If you want to mark a room as fully read (unset the unread marker),
-     * consider using [`Self::mark_as_fully_read_unchecked`].
-     *
-     * If you have a [`Timeline`] available, use [`Timeline::mark_as_read`]
-     * instead.
-     */
-    func sendReadReceipt(eventId: String, receiptType: ReceiptType) async throws 
     
     /**
      * Send a raw state event to the room.
@@ -10518,37 +10502,6 @@ open func saveComposerDraft(draft: ComposerDraft, threadRoot: String?)async thro
 }
     
     /**
-     * Send an attachment (file, image, video, audio) to the room.
-     *
-     * # Arguments
-     *
-     * * `filename` - The file name of the attachment.
-     *
-     * * `mime_type` - The MIME type string (e.g. "image/png",
-     * "application/pdf").
-     *
-     * * `data` - The raw bytes of the attachment.
-     *
-     * * `caption` - An optional caption for the attachment.
-     */
-open func sendAttachment(filename: String, mimeType: String, data: Data, caption: String?)async throws   {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_matrix_sdk_ffi_fn_method_room_send_attachment(
-                    self.uniffiCloneHandle(),
-                    FfiConverterString.lower(filename),FfiConverterString.lower(mimeType),FfiConverterData.lower(data),FfiConverterOptionString.lower(caption)
-                )
-            },
-            pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_matrix_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_matrix_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: FfiConverterTypeClientError_lift
-        )
-}
-    
-    /**
      * Send the current users live location beacon in the room.
      */
 open func sendLiveLocation(geoUri: String)async throws   {
@@ -10584,32 +10537,6 @@ open func sendRaw(eventType: String, content: String)async throws   {
                 uniffi_matrix_sdk_ffi_fn_method_room_send_raw(
                     self.uniffiCloneHandle(),
                     FfiConverterString.lower(eventType),FfiConverterString.lower(content)
-                )
-            },
-            pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_void,
-            completeFunc: ffi_matrix_sdk_ffi_rust_future_complete_void,
-            freeFunc: ffi_matrix_sdk_ffi_rust_future_free_void,
-            liftFunc: { $0 },
-            errorHandler: FfiConverterTypeClientError_lift
-        )
-}
-    
-    /**
-     * Send a read receipt of the given type for the given event.
-     *
-     * If you want to mark a room as fully read (unset the unread marker),
-     * consider using [`Self::mark_as_fully_read_unchecked`].
-     *
-     * If you have a [`Timeline`] available, use [`Timeline::mark_as_read`]
-     * instead.
-     */
-open func sendReadReceipt(eventId: String, receiptType: ReceiptType)async throws   {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_matrix_sdk_ffi_fn_method_room_send_read_receipt(
-                    self.uniffiCloneHandle(),
-                    FfiConverterString.lower(eventId),FfiConverterTypeReceiptType_lower(receiptType)
                 )
             },
             pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_void,
@@ -16737,7 +16664,7 @@ public protocol TimelineProtocol: AnyObject, Sendable {
     
     func createMessageContent(msgType: MessageType)  -> RoomMessageEventContentWithoutRelation?
     
-    func createPoll(question: String, answers: [String], maxSelections: UInt8, pollKind: PollKind) async throws  -> String
+    func createPoll(question: String, answers: [String], maxSelections: UInt8, pollKind: PollKind) async throws 
     
     /**
      * Edits an event from the timeline.
@@ -16756,14 +16683,6 @@ public protocol TimelineProtocol: AnyObject, Sendable {
     func fetchDetailsForEvent(eventId: String) async throws 
     
     func fetchMembers() async 
-    
-    /**
-     * Fetch the reactions for a given event.
-     *
-     * Returns an empty vector if the event has no reactions or is not a
-     * message-like event.
-     */
-    func fetchReactions(eventId: String) async throws  -> [Reaction]
     
     /**
      * Get the current timeline item for the given event ID, if any.
@@ -16992,7 +16911,7 @@ open func createMessageContent(msgType: MessageType) -> RoomMessageEventContentW
 })
 }
     
-open func createPoll(question: String, answers: [String], maxSelections: UInt8, pollKind: PollKind)async throws  -> String  {
+open func createPoll(question: String, answers: [String], maxSelections: UInt8, pollKind: PollKind)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -17001,10 +16920,10 @@ open func createPoll(question: String, answers: [String], maxSelections: UInt8, 
                     FfiConverterString.lower(question),FfiConverterSequenceString.lower(answers),FfiConverterUInt8.lower(maxSelections),FfiConverterTypePollKind_lower(pollKind)
                 )
             },
-            pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_matrix_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_matrix_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterString.lift,
+            pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_void,
+            completeFunc: ffi_matrix_sdk_ffi_rust_future_complete_void,
+            freeFunc: ffi_matrix_sdk_ffi_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeClientError_lift
         )
 }
@@ -17085,29 +17004,6 @@ open func fetchMembers()async   {
             liftFunc: { $0 },
             errorHandler: nil
             
-        )
-}
-    
-    /**
-     * Fetch the reactions for a given event.
-     *
-     * Returns an empty vector if the event has no reactions or is not a
-     * message-like event.
-     */
-open func fetchReactions(eventId: String)async throws  -> [Reaction]  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_matrix_sdk_ffi_fn_method_timeline_fetch_reactions(
-                    self.uniffiCloneHandle(),
-                    FfiConverterString.lower(eventId)
-                )
-            },
-            pollFunc: ffi_matrix_sdk_ffi_rust_future_poll_rust_buffer,
-            completeFunc: ffi_matrix_sdk_ffi_rust_future_complete_rust_buffer,
-            freeFunc: ffi_matrix_sdk_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterSequenceTypeReaction.lift,
-            errorHandler: FfiConverterTypeClientError_lift
         )
 }
     
@@ -27174,17 +27070,32 @@ public func FfiConverterTypeUserPowerLevelUpdate_lower(_ value: UserPowerLevelUp
 }
 
 
+/**
+ * 用户资料（UniFFI 导出版，9 字段）
+ */
 public struct UserProfile: Equatable, Hashable {
     public var userId: String
     public var displayName: String?
     public var avatarUrl: String?
+    public var bio: String?
+    public var location: String?
+    public var feedRoomId: String
+    public var followerCount: UInt64
+    public var followingCount: UInt64
+    public var momentsCount: UInt64
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(userId: String, displayName: String?, avatarUrl: String?) {
+    public init(userId: String, displayName: String?, avatarUrl: String?, bio: String?, location: String?, feedRoomId: String, followerCount: UInt64, followingCount: UInt64, momentsCount: UInt64) {
         self.userId = userId
         self.displayName = displayName
         self.avatarUrl = avatarUrl
+        self.bio = bio
+        self.location = location
+        self.feedRoomId = feedRoomId
+        self.followerCount = followerCount
+        self.followingCount = followingCount
+        self.momentsCount = momentsCount
     }
 
     
@@ -27205,7 +27116,13 @@ public struct FfiConverterTypeUserProfile: FfiConverterRustBuffer {
             try UserProfile(
                 userId: FfiConverterString.read(from: &buf), 
                 displayName: FfiConverterOptionString.read(from: &buf), 
-                avatarUrl: FfiConverterOptionString.read(from: &buf)
+                avatarUrl: FfiConverterOptionString.read(from: &buf), 
+                bio: FfiConverterOptionString.read(from: &buf), 
+                location: FfiConverterOptionString.read(from: &buf), 
+                feedRoomId: FfiConverterString.read(from: &buf), 
+                followerCount: FfiConverterUInt64.read(from: &buf), 
+                followingCount: FfiConverterUInt64.read(from: &buf), 
+                momentsCount: FfiConverterUInt64.read(from: &buf)
         )
     }
 
@@ -27213,6 +27130,12 @@ public struct FfiConverterTypeUserProfile: FfiConverterRustBuffer {
         FfiConverterString.write(value.userId, into: &buf)
         FfiConverterOptionString.write(value.displayName, into: &buf)
         FfiConverterOptionString.write(value.avatarUrl, into: &buf)
+        FfiConverterOptionString.write(value.bio, into: &buf)
+        FfiConverterOptionString.write(value.location, into: &buf)
+        FfiConverterString.write(value.feedRoomId, into: &buf)
+        FfiConverterUInt64.write(value.followerCount, into: &buf)
+        FfiConverterUInt64.write(value.followingCount, into: &buf)
+        FfiConverterUInt64.write(value.momentsCount, into: &buf)
     }
 }
 
@@ -28961,6 +28884,8 @@ public enum ClientError: Swift.Error, Equatable, Hashable, Foundation.LocalizedE
     )
     case MatrixApi(kind: ErrorKind, code: String, msg: String, details: String?
     )
+    case ContentScanner(reason: ErrorReason, info: String
+    )
 
     
 
@@ -29000,6 +28925,10 @@ public struct FfiConverterTypeClientError: FfiConverterRustBuffer {
             msg: try FfiConverterString.read(from: &buf), 
             details: try FfiConverterOptionString.read(from: &buf)
             )
+        case 3: return .ContentScanner(
+            reason: try FfiConverterTypeErrorReason.read(from: &buf), 
+            info: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -29024,6 +28953,12 @@ public struct FfiConverterTypeClientError: FfiConverterRustBuffer {
             FfiConverterString.write(code, into: &buf)
             FfiConverterString.write(msg, into: &buf)
             FfiConverterOptionString.write(details, into: &buf)
+            
+        
+        case let .ContentScanner(reason,info):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeErrorReason.write(reason, into: &buf)
+            FfiConverterString.write(info, into: &buf)
             
         }
     }
@@ -31005,7 +30940,8 @@ public enum FilterTimelineEventCondition: Equatable, Hashable {
      * The event is an `m.room.member` event that represents a membership
      * change (join, leave, etc.).
      */
-    case membershipChange
+    case membershipChange(filter: MembershipChangeFilter
+    )
     /**
      * The event is an `m.room.member` event that represents a profile
      * change (displayname or avatar URL).
@@ -31035,7 +30971,8 @@ public struct FfiConverterTypeFilterTimelineEventCondition: FfiConverterRustBuff
         case 1: return .eventType(eventType: try FfiConverterTypeFilterTimelineEventType.read(from: &buf)
         )
         
-        case 2: return .membershipChange
+        case 2: return .membershipChange(filter: try FfiConverterTypeMembershipChangeFilter.read(from: &buf)
+        )
         
         case 3: return .profileChange
         
@@ -31052,9 +30989,10 @@ public struct FfiConverterTypeFilterTimelineEventCondition: FfiConverterRustBuff
             FfiConverterTypeFilterTimelineEventType.write(eventType, into: &buf)
             
         
-        case .membershipChange:
+        case let .membershipChange(filter):
             writeInt(&buf, Int32(2))
-        
+            FfiConverterTypeMembershipChangeFilter.write(filter, into: &buf)
+            
         
         case .profileChange:
             writeInt(&buf, Int32(3))
@@ -53152,7 +53090,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_matrix_sdk_ffi_checksum_method_client_get_notification_settings() != 625) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_matrix_sdk_ffi_checksum_method_client_get_profile() != 3999) {
+    if (uniffi_matrix_sdk_ffi_checksum_method_client_get_profile() != 42166) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_client_get_recently_visited_rooms() != 43351) {
@@ -53456,6 +53394,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_clientbuilder_dm_room_definition() != 42422) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_matrix_sdk_ffi_checksum_method_clientbuilder_enable_content_scanner() != 64503) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_clientbuilder_enable_share_history_on_invite() != 47743) {
@@ -53950,16 +53891,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_matrix_sdk_ffi_checksum_method_room_save_composer_draft() != 42915) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_matrix_sdk_ffi_checksum_method_room_send_attachment() != 27588) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_matrix_sdk_ffi_checksum_method_room_send_live_location() != 42045) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_room_send_raw() != 63831) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_matrix_sdk_ffi_checksum_method_room_send_read_receipt() != 58981) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_room_send_state_event_raw() != 55730) {
@@ -54400,7 +54335,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_matrix_sdk_ffi_checksum_method_timeline_create_message_content() != 54719) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_matrix_sdk_ffi_checksum_method_timeline_create_poll() != 351) {
+    if (uniffi_matrix_sdk_ffi_checksum_method_timeline_create_poll() != 33924) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_timeline_edit() != 46968) {
@@ -54413,9 +54348,6 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_timeline_fetch_members() != 22294) {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if (uniffi_matrix_sdk_ffi_checksum_method_timeline_fetch_reactions() != 8203) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_matrix_sdk_ffi_checksum_method_timeline_get_event_timeline_item_by_event_id() != 40008) {
@@ -54805,6 +54737,7 @@ private let initializationResult: InitializationResult = {
     uniffiCallbackInitWidgetCapabilitiesProvider()
     uniffiEnsureMatrixSdkBaseInitialized()
     uniffiEnsureMatrixSdkCommonInitialized()
+    uniffiEnsureMatrixSdkContentscannerInitialized()
     uniffiEnsureMatrixSdkCryptoInitialized()
     uniffiEnsureMatrixSdkInitialized()
     uniffiEnsureMatrixSdkUiInitialized()

@@ -66,18 +66,18 @@ final class FriendService: ObservableObject {
         let results = try await client.searchUsers(searchTerm: userId, limit: 1)
         if let profile = results.results.first {
             let friend = Friend(
-                id: profile.userId, userId: profile.userId,
+                userId: profile.userId,
                 displayName: profile.displayName,
-                avatarUrl: profile.avatarUrl.flatMap { URL(string: $0) },
+                avatarUrl: profile.avatarUrl,
                 statusMessage: nil, isOnline: false, lastSeen: nil
             )
             // 回写 ProfileCache
             let userProfile = UserProfile(
-                id: profile.userId, userId: profile.userId,
+                userId: profile.userId,
                 displayName: profile.displayName,
-                avatarUrl: profile.avatarUrl.flatMap { URL(string: $0) },
+                avatarUrl: profile.avatarUrl,
                 bio: nil, location: nil,
-                feedRoomId: nil, followerCount: 0, followingCount: 0, momentsCount: 0
+                feedRoomId: "", followerCount: 0, followingCount: 0, momentsCount: 0
             )
             AppContainer.shared.profileCache.set(userId: profile.userId, profile: userProfile)
             return friend
@@ -133,9 +133,9 @@ final class FriendService: ObservableObject {
             }
 
             searchedUsers.append(SearchedUser(
-                id: profile.userId, userId: profile.userId,
+                userId: profile.userId,
                 displayName: profile.displayName,
-                avatarUrl: profile.avatarUrl.flatMap { URL(string: $0) },
+                avatarUrl: profile.avatarUrl,
                 bio: nil,
                 isAlreadyFriend: isFriend,
                 roomId: roomId

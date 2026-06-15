@@ -89,7 +89,7 @@ final class AccountSettingsService: ObservableObject {
         }
         guard let client = Self.ffiClient else { throw SocialFeedError.clientNotInitialized }
         let ffiProfile = try await client.getProfile(userId: userId)
-        let profile = UserProfile(from: ffiProfile)
+        let profile = ffiProfile
         AppContainer.shared.profileCache.set(userId: userId, profile: profile)
         return profile
     }
