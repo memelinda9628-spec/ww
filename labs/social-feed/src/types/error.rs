@@ -98,7 +98,7 @@ impl fmt::Display for SocialFeedError {
 impl std::error::Error for SocialFeedError {}
 
 /// 操作结果类型别名
-pub type `Result<T>` = std::result::Result<T, SocialFeedError>;
+pub type Result<T> = std::result::Result<T, SocialFeedError>;
 
 /// 从字符串转换为错误
 impl From<String> for SocialFeedError {

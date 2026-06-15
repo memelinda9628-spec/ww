@@ -29,7 +29,7 @@ use ruma::UserId;
 use tracing::{error, warn};
 
 use crate::{
-    social_feed::UserProfile, error::ClientError, runtime::get_runtime_handle, utils::Timestamp,
+    error::ClientError, runtime::get_runtime_handle, social_feed::UserProfile, utils::Timestamp,
 };
 
 #[derive(uniffi::Object)]

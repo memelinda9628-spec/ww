@@ -1,12 +1,12 @@
 //! Social Feed Lab → UniFFI bridge
 
+use crate::ClientError;
 use matrix_sdk::Account;
 use matrix_sdk::ruma::{
     UserId,
     api::client::profile::{AvatarUrl, DisplayName},
     api::client::user_directory::search_users,
 };
-use crate::ClientError;
 
 /// 用户资料（UniFFI 导出版，9 字段）
 #[derive(uniffi::Record)]

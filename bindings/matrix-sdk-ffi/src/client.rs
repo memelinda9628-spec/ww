@@ -138,12 +138,12 @@ use crate::{
     room::{RoomHistoryVisibility, RoomInfoListener, RoomSendQueueUpdate},
     room_directory_search::RoomDirectorySearch,
     room_preview::RoomPreview,
-    social_feed::UserProfile,
     ruma::{
         AccountDataEvent, AccountDataEventType, AuthData, InviteAvatars, MediaPreviewConfig,
         MediaPreviews, MediaSource, RoomAccountDataEvent, RoomAccountDataEventType,
     },
     runtime::get_runtime_handle,
+    social_feed::UserProfile,
     spaces::SpaceService,
     sync_service::{SyncService, SyncServiceBuilder},
     sync_v2::{SyncListenerV2, SyncResponseV2, SyncSettingsV2},
@@ -1644,10 +1644,7 @@ impl Client {
         auth_data: Option<AuthData>,
     ) -> Result<(), ClientError> {
         let auth = auth_data.map(crate::ruma::AuthData::into);
-        self.inner
-            .account()
-            .change_password(&new_password, auth.as_ref().cloned())
-            .await?;
+        self.inner.account().change_password(&new_password, auth.as_ref().cloned()).await?;
         Ok(())
     }
 

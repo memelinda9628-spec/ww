@@ -152,7 +152,7 @@ pub struct SearchEngine;
 
 impl SearchEngine {
     /// 搜索动态
-    pub fn search(moments: &[Moment], filter: &SearchFilter) -> `Vec<Moment>` {
+    pub fn search(moments: &[Moment], filter: &SearchFilter) -> Vec<Moment> {
         moments
             .iter()
             .filter(|m| filter.matches(m))
@@ -161,7 +161,7 @@ impl SearchEngine {
     }
 
     /// 对动态进行排序
-    pub fn sort(moments: &mut `Vec<Moment>`, sort_by: SortBy) {
+    pub fn sort(moments: &mut Vec<Moment>, sort_by: SortBy) {
         match sort_by {
             SortBy::TimeDesc => {
                 moments.sort_by(|a, b| b.created_at.cmp(&a.created_at));
@@ -186,7 +186,7 @@ impl SearchEngine {
     }
 
     /// 搜索、过滤并排序
-    pub fn search_and_sort(moments: &[Moment], filter: &SearchFilter, sort_by: SortBy) -> `Vec<Moment>` {
+    pub fn search_and_sort(moments: &[Moment], filter: &SearchFilter, sort_by: SortBy) -> Vec<Moment> {
         let mut results = Self::search(moments, filter);
         Self::sort(&mut results, sort_by);
         results
