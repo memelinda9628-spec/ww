@@ -1,4 +1,4 @@
-//! [SocialFeedError + Result<T> 类型别名]
+//! [SocialFeedError + `Result<T>` 类型别名]
 
 use std::fmt;
 
@@ -98,7 +98,7 @@ impl fmt::Display for SocialFeedError {
 impl std::error::Error for SocialFeedError {}
 
 /// 操作结果类型别名
-pub type Result<T> = std::result::Result<T, SocialFeedError>;
+pub type `Result<T>` = std::result::Result<T, SocialFeedError>;
 
 /// 从字符串转换为错误
 impl From<String> for SocialFeedError {
