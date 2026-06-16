@@ -87,8 +87,7 @@ impl SocialFeed {
         let room = self.get_my_room()?;
 
         // MxcUri 是 unsized type，需要转换为 &MxcUri
-        let avatar_uri: &MxcUri =
-            mxc_uri.into();
+        let avatar_uri: &MxcUri = mxc_uri.into();
 
         room.set_avatar_url(avatar_uri, None)
             .await

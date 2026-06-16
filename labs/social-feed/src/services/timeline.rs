@@ -105,11 +105,8 @@ impl SocialFeed {
             let Some(msg) = event.content().as_message() else { continue };
 
             let text = msg.body().to_owned();
-            let ts = event
-                .timestamp()
-                .to_system_time()
-                .map(DateTime::from)
-                .unwrap_or_else(Utc::now);
+            let ts =
+                event.timestamp().to_system_time().map(DateTime::from).unwrap_or_else(Utc::now);
             let event_id = match event.event_id() {
                 Some(id) => id.to_string(),
                 None => continue,
