@@ -152,8 +152,8 @@ fn test_moment_timestamp_ordering() {
     };
 
     // Test sorting by timestamp
-    let mut moments = vec![moment1, moment2, moment3];
-    moments.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    let mut moments = [moment1, moment2, moment3];
+    moments.sort_by_key(|b| std::cmp::Reverse(b.created_at));
 
     assert_eq!(moments[0].text, "Third");
     assert_eq!(moments[1].text, "Second");

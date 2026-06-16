@@ -15,7 +15,7 @@ fn test_empty_timeline() {
 /// 测试用例：单条动态的信息流
 #[test]
 fn test_single_moment_timeline() {
-    let moments = vec![Moment {
+    let moments = [Moment {
         id: "$evt_single".to_string(),
         author_id: "@alice:example.com".to_string(),
         author_name: "Alice".to_string(),
@@ -270,16 +270,16 @@ fn test_following_list_deduplication() {
 /// 测试用例：极限分页
 #[test]
 fn test_pagination_boundary() {
-    let total_items = 25;
-    let page_size = 10usize;
+    let total_items: u32 = 25;
+    let page_size: u32 = 10;
 
     // 计算总页数
-    let total_pages = (total_items + page_size - 1) / page_size;
+    let total_pages = total_items.div_ceil(page_size);
     assert_eq!(total_pages, 3);
 
     // 最后一页应有 5 个项
     let last_page_items =
-        if total_items % page_size == 0 { page_size } else { total_items % page_size };
+        if total_items.is_multiple_of(page_size) { page_size } else { total_items % page_size };
     assert_eq!(last_page_items, 5);
 }
 
@@ -297,7 +297,7 @@ fn test_empty_image_urls() {
 /// 测试用例：单个图片 URL
 #[test]
 fn test_single_image_url() {
-    let image_urls = vec!["https://example.com/image.jpg".to_string()];
+    let image_urls = ["https://example.com/image.jpg".to_string()];
 
     assert_eq!(image_urls.len(), 1);
     assert!(image_urls[0].starts_with("https://"));

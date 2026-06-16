@@ -106,7 +106,7 @@ fn test_moment_list_sorting() {
 
     // 按照时间倒序排列（最新优先）
     let mut sorted = moments;
-    sorted.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.created_at));
 
     assert_eq!(sorted[0].id, "$evt_3");
     assert_eq!(sorted[1].id, "$evt_2");
@@ -177,7 +177,7 @@ fn test_pagination_parameters() {
     let total_items = 100usize;
 
     // 验证分页计数
-    let pages = (total_items as u32 + page_size - 1) / page_size;
+    let pages = (total_items as u32).div_ceil(page_size);
     assert_eq!(pages, 5);
 
     // 验证最后一页的项数

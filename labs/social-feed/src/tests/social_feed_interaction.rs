@@ -38,7 +38,7 @@ fn test_timeline_aggregation_logic() {
     all_moments.extend(bob_moments);
 
     // 按时间倒序排列
-    all_moments.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    all_moments.sort_by_key(|b| std::cmp::Reverse(b.created_at));
 
     // 验证聚合结果
     assert_eq!(all_moments.len(), 2);
@@ -73,7 +73,7 @@ fn test_following_chain() {
 
     // Bob 关注 Alice 和 David
     let bob_following =
-        vec!["!alice_feed:example.com".to_string(), "!david_feed:example.com".to_string()];
+        ["!alice_feed:example.com".to_string(), "!david_feed:example.com".to_string()];
 
     // 验证交叉关注
     assert!(alice_following.contains(&"!bob_feed:example.com".to_string()));
@@ -93,6 +93,7 @@ fn test_like_operation_flow() {
     let room_id = "!room_alice:example.com";
 
     // 记录点赞信息
+    #[expect(dead_code)]
     #[derive(Clone)]
     struct Like {
         event_id: String,
@@ -120,6 +121,7 @@ fn test_comment_thread_logic() {
     let original_event_id = "$msg_1";
 
     // 多条评论（reply）
+    #[expect(dead_code)]
     #[derive(Clone)]
     struct Comment {
         id: String,
@@ -187,7 +189,7 @@ fn test_timeline_pagination_logic() {
         .collect();
 
     // 按时间倒序排列
-    moments.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    moments.sort_by_key(|b| std::cmp::Reverse(b.created_at));
 
     // 获取第一页（20 条）
     let page_size = 20usize;
@@ -229,6 +231,7 @@ fn test_user_profile_update() {
 #[test]
 fn test_reaction_aggregation() {
     // 模拟多个用户对同一消息的反应
+    #[expect(dead_code)]
     #[derive(Clone)]
     struct Reaction {
         reactor: String,
@@ -236,20 +239,11 @@ fn test_reaction_aggregation() {
     }
 
     let _event_id = "$msg_1";
-    let mut reactions: Vec<Reaction> = vec![];
-
-    // Alice 点赞
-    reactions
-        .push(Reaction { reactor: "@alice:example.com".to_string(), emoji: "👍".to_string() });
-
-    // Bob 点赞
-    reactions.push(Reaction { reactor: "@bob:example.com".to_string(), emoji: "👍".to_string() });
-
-    // Charlie 不同的反应
-    reactions
-        .push(Reaction {
-            reactor: "@charlie:example.com".to_string(), emoji: "❤️".to_string()
-        });
+    let reactions: Vec<Reaction> = vec![
+        Reaction { reactor: "@alice:example.com".to_string(), emoji: "👍".to_string() },
+        Reaction { reactor: "@bob:example.com".to_string(), emoji: "👍".to_string() },
+        Reaction { reactor: "@charlie:example.com".to_string(), emoji: "❤️".to_string() },
+    ];
 
     // 统计 👍 的数量
     let thumbs_up_count = reactions.iter().filter(|r| r.emoji == "👍").count();
