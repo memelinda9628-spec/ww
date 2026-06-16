@@ -159,19 +159,19 @@ impl SearchEngine {
     }
 
     /// 对动态进行排序
-    pub fn sort(moments: &mut Vec<Moment>, sort_by: SortBy) {
+    pub fn sort(moments: &mut [Moment], sort_by: SortBy) {
         match sort_by {
             SortBy::TimeDesc => {
-                moments.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+                moments.sort_by_key(|m| std::cmp::Reverse(m.created_at));
             }
             SortBy::TimeAsc => {
-                moments.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+                moments.sort_by_key(|m| m.created_at);
             }
             SortBy::LikesDesc => {
-                moments.sort_by(|a, b| b.like_count.cmp(&a.like_count));
+                moments.sort_by_key(|m| std::cmp::Reverse(m.like_count));
             }
             SortBy::CommentsDesc => {
-                moments.sort_by(|a, b| b.comment_count.cmp(&a.comment_count));
+                moments.sort_by_key(|m| std::cmp::Reverse(m.comment_count));
             }
             SortBy::HotDesc => {
                 moments.sort_by(|a, b| {

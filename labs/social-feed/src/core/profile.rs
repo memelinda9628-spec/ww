@@ -88,7 +88,7 @@ impl SocialFeed {
 
         // MxcUri 是 unsized type，需要转换为 &MxcUri
         let avatar_uri: &MxcUri =
-            mxc_uri.try_into().map_err(|_| SocialFeedError::InvalidUrl(mxc_uri.to_string()))?;
+            mxc_uri.into();
 
         room.set_avatar_url(avatar_uri, None)
             .await

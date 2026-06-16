@@ -63,7 +63,7 @@ impl SocialFeed {
             }
         }
 
-        all.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        all.sort_by_key(|m| std::cmp::Reverse(m.created_at));
         Ok(all)
     }
 
@@ -80,6 +80,7 @@ impl SocialFeed {
         self.fetch_room_moments(&room, page_size).await
     }
 
+    #[allow(clippy::map_entry)]
     pub(crate) async fn fetch_room_moments(
         &mut self,
         room: &Room,
@@ -108,7 +109,7 @@ impl SocialFeed {
                 .timestamp()
                 .to_system_time()
                 .map(DateTime::from)
-                .unwrap_or_else(|| Utc::now());
+                .unwrap_or_else(Utc::now);
             let event_id = match event.event_id() {
                 Some(id) => id.to_string(),
                 None => continue,

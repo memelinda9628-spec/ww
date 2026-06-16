@@ -53,7 +53,7 @@ impl SocialFeed {
             .joined_rooms()
             .into_iter()
             .filter(|r| self.is_feed_room(r))
-            .filter(|r| self.my_feed_room_id.as_ref().map_or(true, |my_id| my_id != r.room_id()))
+            .filter(|r| self.my_feed_room_id.as_ref().map(|my_id| my_id != r.room_id()).unwrap_or(true))
             .map(|r| r.room_id().to_string())
             .collect()
     }

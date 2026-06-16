@@ -165,7 +165,7 @@ impl SearchIndex {
         let mut result_moments: Vec<_> =
             results.iter().filter_map(|id| moments.get(id)).cloned().collect();
 
-        result_moments.sort_by(|a, b| b.like_count.cmp(&a.like_count));
+        result_moments.sort_by_key(|m| std::cmp::Reverse(m.like_count));
         result_moments.truncate(limit);
 
         result_moments
@@ -181,7 +181,7 @@ impl SearchIndex {
             let mut results: Vec<_> =
                 entry.event_ids.iter().filter_map(|id| moments.get(id)).cloned().collect();
 
-            results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+            results.sort_by_key(|r| std::cmp::Reverse(r.created_at));
             results.truncate(limit);
             results
         } else {
@@ -199,7 +199,7 @@ impl SearchIndex {
             let mut results: Vec<_> =
                 entry.event_ids.iter().filter_map(|id| moments.get(id)).cloned().collect();
 
-            results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+            results.sort_by_key(|r| std::cmp::Reverse(r.created_at));
             results.truncate(limit);
             results
         } else {

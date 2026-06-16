@@ -157,7 +157,7 @@ impl<T> PagedResult<T> {
         cursor: String,
         total_count: Option<usize>,
     ) -> Self {
-        let has_forward = total_count.map_or(true, |total| start + page_size < total);
+        let has_forward = total_count.map(|total| start + page_size < total).unwrap_or(true);
         let has_backward = start > 0;
 
         let forward_token = if has_forward {
@@ -260,7 +260,7 @@ impl PaginationState {
 
     /// 返回到上一页（前向历史）
     pub fn go_back(&mut self) -> Option<PaginationToken> {
-        self.backward_history.pop().map(|token| {
+        self.backward_history.pop().inspect(|token| {
             self.current_token = Some(token.clone());
             token
         })

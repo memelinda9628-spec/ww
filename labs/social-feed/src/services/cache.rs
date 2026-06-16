@@ -18,6 +18,7 @@ struct CacheEntry<T> {
     value: T,
     expires_at: Instant,
     /// 该条目关联的事件版本（用于检测状态变更）
+    #[allow(dead_code)]
     version: u64,
 }
 
@@ -41,14 +42,19 @@ pub enum CacheInvalidationEvent {
     Clear,
 }
 
+/// 个人资料缓存条目类型
+type ProfileEntry = CacheEntry<(String, Option<String>)>;
+/// 失效事件监听器类型
+type InvalidationListener = Box<dyn Fn(CacheInvalidationEvent) + Send + Sync>;
+
 /// 用户资料缓存（带事件驱动失效）
 pub struct ProfileCache {
     /// user_id → (display_name, avatar_url, version)
-    profiles: Arc<RwLock<HashMap<String, CacheEntry<(String, Option<String>)>>>>,
+    profiles: Arc<RwLock<HashMap<String, ProfileEntry>>>,
     /// TTL（生存时间）
     ttl: Duration,
     /// 失效事件监听器（可选）
-    invalidation_listeners: Arc<RwLock<Vec<Box<dyn Fn(CacheInvalidationEvent) + Send + Sync>>>>,
+    invalidation_listeners: Arc<RwLock<Vec<InvalidationListener>>>,
     /// 最大缓存条目数
     max_entries: usize,
     /// 版本号计数器（递增）
