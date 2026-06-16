@@ -3,10 +3,14 @@
 //! 使用倒排索引支持高效的全文搜索。
 //! 可选集成 tantivy 或 elastic 搜索引擎实现更高级功能。
 
-use crate::types::models::Moment;
-use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
+
 use tokio::sync::RwLock;
+
+use crate::types::models::Moment;
 
 /// 单个搜索词条
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -32,10 +36,7 @@ pub enum TokenType {
 impl SearchToken {
     /// 创建新的搜索词条
     pub fn new(term: String, token_type: TokenType) -> Self {
-        Self {
-            term: term.to_lowercase(),
-            token_type,
-        }
+        Self { term: term.to_lowercase(), token_type }
     }
 
     /// 从文本分词
@@ -46,16 +47,10 @@ impl SearchToken {
         for part in text.split_whitespace() {
             if part.starts_with('#') && part.len() > 1 {
                 // 标签
-                tokens.push(SearchToken::new(
-                    part[1..].to_string(),
-                    TokenType::Hashtag,
-                ));
+                tokens.push(SearchToken::new(part[1..].to_string(), TokenType::Hashtag));
             } else if part.starts_with('@') && part.len() > 1 {
                 // 提及
-                tokens.push(SearchToken::new(
-                    part[1..].to_string(),
-                    TokenType::Mention,
-                ));
+                tokens.push(SearchToken::new(part[1..].to_string(), TokenType::Mention));
             } else if part.starts_with("http") {
                 // URL
                 tokens.push(SearchToken::new(part.to_string(), TokenType::Url));
@@ -90,9 +85,7 @@ pub struct SearchIndex {
 
 impl std::fmt::Debug for SearchIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SearchIndex")
-            .field("max_index_size", &self.max_index_size)
-            .finish()
+        f.debug_struct("SearchIndex").field("max_index_size", &self.max_index_size).finish()
     }
 }
 
@@ -109,7 +102,7 @@ impl SearchIndex {
     /// 添加 Moment 到索引
     pub async fn index_moment(&self, moment: &Moment) -> Result<(), String> {
         let moments = self.moments.read().await;
-        
+
         // 检查索引大小限制
         if moments.len() >= self.max_index_size {
             return Err("索引已满，无法添加更多内容".to_string());
@@ -123,18 +116,13 @@ impl SearchIndex {
         // 更新倒排索引
         let mut index = self.inverted_index.write().await;
         for token in tokens {
-            let entry = index
-                .entry(token.clone())
-                .or_insert_with(|| InvertedIndexEntry {
-                    event_ids: HashSet::new(),
-                    frequency: HashMap::new(),
-                });
+            let entry = index.entry(token.clone()).or_insert_with(|| InvertedIndexEntry {
+                event_ids: HashSet::new(),
+                frequency: HashMap::new(),
+            });
 
             entry.event_ids.insert(moment.id.clone());
-            *entry
-                .frequency
-                .entry(moment.id.clone())
-                .or_insert(0) += 1;
+            *entry.frequency.entry(moment.id.clone()).or_insert(0) += 1;
         }
 
         // 存储 Moment
@@ -174,11 +162,8 @@ impl SearchIndex {
         }
 
         // 按点赞数排序并限制结果数量
-        let mut result_moments: Vec<_> = results
-            .iter()
-            .filter_map(|id| moments.get(id))
-            .cloned()
-            .collect();
+        let mut result_moments: Vec<_> =
+            results.iter().filter_map(|id| moments.get(id)).cloned().collect();
 
         result_moments.sort_by(|a, b| b.like_count.cmp(&a.like_count));
         result_moments.truncate(limit);
@@ -189,16 +174,12 @@ impl SearchIndex {
     /// 搜索标签
     pub async fn search_hashtag(&self, tag: &str, limit: usize) -> Vec<Moment> {
         let token = SearchToken::new(tag.to_string(), TokenType::Hashtag);
-        
+
         let index = self.inverted_index.read().await;
         if let Some(entry) = index.get(&token) {
             let moments = self.moments.read().await;
-            let mut results: Vec<_> = entry
-                .event_ids
-                .iter()
-                .filter_map(|id| moments.get(id))
-                .cloned()
-                .collect();
+            let mut results: Vec<_> =
+                entry.event_ids.iter().filter_map(|id| moments.get(id)).cloned().collect();
 
             results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
             results.truncate(limit);
@@ -211,16 +192,12 @@ impl SearchIndex {
     /// 搜索提及
     pub async fn search_mention(&self, user_id: &str, limit: usize) -> Vec<Moment> {
         let token = SearchToken::new(user_id.to_string(), TokenType::Mention);
-        
+
         let index = self.inverted_index.read().await;
         if let Some(entry) = index.get(&token) {
             let moments = self.moments.read().await;
-            let mut results: Vec<_> = entry
-                .event_ids
-                .iter()
-                .filter_map(|id| moments.get(id))
-                .cloned()
-                .collect();
+            let mut results: Vec<_> =
+                entry.event_ids.iter().filter_map(|id| moments.get(id)).cloned().collect();
 
             results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
             results.truncate(limit);
@@ -265,7 +242,8 @@ impl SearchIndex {
             avg_tokens_per_moment: if moments.is_empty() {
                 0.0
             } else {
-                index.values().map(|e| e.event_ids.len()).sum::<usize>() as f64 / moments.len() as f64
+                index.values().map(|e| e.event_ids.len()).sum::<usize>() as f64
+                    / moments.len() as f64
             },
         }
     }
@@ -287,8 +265,9 @@ impl Default for SearchIndex {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::Utc;
+
+    use super::*;
 
     fn create_test_moment(id: &str, text: &str, author_name: &str) -> Moment {
         Moment {

@@ -15,7 +15,10 @@ pub fn extract_markdown_images(text: &str) -> Vec<String> {
                 let url_end = url_start + close_paren;
                 let url = &text[url_start..url_end];
 
-                if url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mxc://") {
+                if url.starts_with("http://")
+                    || url.starts_with("https://")
+                    || url.starts_with("mxc://")
+                {
                     images.push(url.to_string());
                 }
                 current_pos = url_end + 1;
@@ -46,7 +49,10 @@ pub fn extract_html_images(html: &str) -> Vec<String> {
                 if let Some(src_end) = tag[src_start..].find("\"") {
                     let url = &tag[src_start..src_start + src_end];
 
-                    if url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mxc://") {
+                    if url.starts_with("http://")
+                        || url.starts_with("https://")
+                        || url.starts_with("mxc://")
+                    {
                         images.push(url.to_string());
                     }
                 }
@@ -110,7 +116,7 @@ mod tests {
     fn test_extract_markdown_images_invalid_format() {
         let text = "Invalid: ![alt](not_a_url) and ![alt](ftp://bad.com)";
         let images = extract_markdown_images(text);
-        assert_eq!(images.len(), 0);  // ftp:// not supported
+        assert_eq!(images.len(), 0); // ftp:// not supported
     }
 
     #[test]
@@ -123,7 +129,8 @@ mod tests {
 
     #[test]
     fn test_extract_html_images_multiple() {
-        let html = r#"<img src="https://example.com/1.jpg"/><img src="https://example.com/2.jpg"/>"#;
+        let html =
+            r#"<img src="https://example.com/1.jpg"/><img src="https://example.com/2.jpg"/>"#;
         let images = extract_html_images(html);
         assert_eq!(images.len(), 2);
     }
@@ -154,9 +161,10 @@ mod tests {
 
     #[test]
     fn test_extract_all_images_dedup() {
-        let text = r#"![img](https://example.com/same.jpg) and ![img2](https://example.com/same.jpg)"#;
+        let text =
+            r#"![img](https://example.com/same.jpg) and ![img2](https://example.com/same.jpg)"#;
         let images = extract_all_images(text);
-        assert_eq!(images.len(), 1);  // Should be deduped
+        assert_eq!(images.len(), 1); // Should be deduped
     }
 
     #[test]
@@ -173,4 +181,3 @@ mod tests {
         assert!(images[0].starts_with("http://"));
     }
 }
-

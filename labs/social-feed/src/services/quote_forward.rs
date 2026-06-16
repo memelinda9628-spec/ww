@@ -1,10 +1,11 @@
 //! [ForwardMetadata 带原文引用，供 forward() 生成富文本转发消息]
 
-use crate::types::models::Moment;
 use serde::{Deserialize, Serialize};
 
+use crate::types::models::Moment;
+
 /// 转发元数据
-/// 
+///
 /// 保存关于被转发的原始事件的完整信息，以便在跨 homeserver 场景下
 /// 仍能恢复原文。使用 m.relates_to quote 关系存储。
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +30,12 @@ pub struct ForwardMetadata {
 
 impl ForwardMetadata {
     /// 从原 Moment 和附言创建转发元数据
-    pub fn from_moment(moment: &Moment, room_id: String, quote_text: String, event_url: String) -> Self {
+    pub fn from_moment(
+        moment: &Moment,
+        room_id: String,
+        quote_text: String,
+        event_url: String,
+    ) -> Self {
         Self {
             original_event_id: moment.id.clone(),
             original_room_id: room_id,
@@ -46,10 +52,7 @@ impl ForwardMetadata {
     pub fn formatted_body(&self) -> String {
         format!(
             "<blockquote><p><strong>{}</strong> (@{})</p><p>{}</p></blockquote>\n\n{}",
-            self.original_author_name,
-            self.original_author_id,
-            self.original_text,
-            self.quote_text
+            self.original_author_name, self.original_author_id, self.original_text, self.quote_text
         )
     }
 
@@ -57,10 +60,7 @@ impl ForwardMetadata {
     pub fn plain_body(&self) -> String {
         format!(
             "> {} (@{}):\n> {}\n\n{}",
-            self.original_author_name,
-            self.original_author_id,
-            self.original_text,
-            self.quote_text
+            self.original_author_name, self.original_author_id, self.original_text, self.quote_text
         )
     }
 
@@ -120,8 +120,9 @@ impl ForwardManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::Utc;
+
+    use super::*;
 
     fn create_test_moment() -> Moment {
         Moment {
@@ -171,11 +172,7 @@ mod tests {
 
     #[test]
     fn test_build_event_url() {
-        let url = ForwardManager::build_event_url(
-            "example.com",
-            "!room:example.com",
-            "$event123",
-        );
+        let url = ForwardManager::build_event_url("example.com", "!room:example.com", "$event123");
         assert_eq!(url, "matrix://roomid/!room:example.com/eventid/$event123");
     }
 

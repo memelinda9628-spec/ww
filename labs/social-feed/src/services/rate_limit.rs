@@ -3,11 +3,14 @@
 //! 实现客户端侧的速率限制和自适应退避重试机制。
 //! 支持令牌桶算法和指数退避。
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use std::time::{Duration, Instant};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
 use rand::Rng;
+use tokio::sync::RwLock;
 
 /// 速率限制配置
 #[derive(Debug, Clone)]
@@ -31,7 +34,7 @@ impl Default for RateLimitConfig {
             bucket_capacity: 100,
             max_retries: 3,
             initial_backoff_ms: 100,
-            max_backoff_ms: 30000,  // 30 秒
+            max_backoff_ms: 30000, // 30 秒
         }
     }
 }
@@ -52,12 +55,7 @@ struct TokenBucket {
 impl TokenBucket {
     /// 创建新的令牌桶
     fn new(capacity: f64, refill_rate: f64) -> Self {
-        Self {
-            tokens: capacity,
-            capacity,
-            refill_rate,
-            last_refill: Instant::now(),
-        }
+        Self { tokens: capacity, capacity, refill_rate, last_refill: Instant::now() }
     }
 
     /// 补充令牌
@@ -118,25 +116,22 @@ pub struct RetryPolicy {
 impl RetryPolicy {
     /// 创建新的重试策略
     pub fn new(config: &RateLimitConfig) -> Self {
-        Self {
-            attempt: 0,
-            next_backoff_ms: config.initial_backoff_ms,
-        }
+        Self { attempt: 0, next_backoff_ms: config.initial_backoff_ms }
     }
 
     /// 计算下次重试的延迟（指数退避）
     pub fn calculate_backoff(&mut self, config: &RateLimitConfig) -> u64 {
         let backoff = self.next_backoff_ms;
         self.attempt += 1;
-        
+
         // 指数退避：2^attempt * initial_backoff，加上随机抖动
         let next_backoff = ((config.initial_backoff_ms as u64) * (1u64 << self.attempt))
             .min(config.max_backoff_ms);
-        
+
         // 添加 ±10% 的随机抖动
         let jitter = (next_backoff as f64 * 0.1) as u64;
         self.next_backoff_ms = next_backoff;
-        
+
         let mut rng = rand::thread_rng();
         backoff + rng.gen_range(0..jitter.max(1))
     }
@@ -162,7 +157,7 @@ impl RateLimiter {
     /// 创建新的速率限制器
     pub fn new(config: RateLimitConfig) -> Self {
         let mut buckets = HashMap::new();
-        
+
         // 为不同操作类型创建令牌桶
         let op_types = vec![
             OperationType::PostMoment,
@@ -172,14 +167,11 @@ impl RateLimiter {
             OperationType::Follow,
             OperationType::Other,
         ];
-        
+
         for op_type in op_types {
             buckets.insert(
                 op_type,
-                TokenBucket::new(
-                    config.bucket_capacity as f64,
-                    config.requests_per_second,
-                ),
+                TokenBucket::new(config.bucket_capacity as f64, config.requests_per_second),
             );
         }
 
@@ -207,20 +199,15 @@ impl RateLimiter {
     /// 处理 homeserver 速率限制响应
     pub async fn handle_rate_limit(&self, op_type: OperationType, retry_after_ms: u64) {
         let mut policies = self.retry_policies.write().await;
-        let policy = policies
-            .entry(op_type)
-            .or_insert_with(|| RetryPolicy::new(&self.config));
-        
+        let policy = policies.entry(op_type).or_insert_with(|| RetryPolicy::new(&self.config));
+
         policy.next_backoff_ms = retry_after_ms;
     }
 
     /// 获取重试策略
     pub async fn get_retry_policy(&self, op_type: OperationType) -> RetryPolicy {
         let mut policies = self.retry_policies.write().await;
-        policies
-            .entry(op_type)
-            .or_insert_with(|| RetryPolicy::new(&self.config))
-            .clone()
+        policies.entry(op_type).or_insert_with(|| RetryPolicy::new(&self.config)).clone()
     }
 
     /// 重置操作类型的限制

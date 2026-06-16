@@ -2,8 +2,8 @@
 //!
 //! 提供双向分页游标管理和增量同步功能。
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// 分页方向
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -15,7 +15,7 @@ pub enum PaginationDirection {
 }
 
 /// 分页令牌，用于标记分页位置
-/// 
+///
 /// 支持双向分页：
 /// - Forward: 获取更新的消息（向下滚动）
 /// - Backward: 获取更旧的消息（向上滚动）
@@ -36,13 +36,7 @@ pub struct PaginationToken {
 impl PaginationToken {
     /// 创建新的分页令牌
     pub fn new(cursor: String, start: usize, size: usize, direction: PaginationDirection) -> Self {
-        Self {
-            cursor,
-            start,
-            size,
-            direction,
-            created_at: Utc::now(),
-        }
+        Self { cursor, start, size, direction, created_at: Utc::now() }
     }
 
     /// 创建向前分页的令牌
@@ -80,7 +74,7 @@ impl PaginationToken {
             PaginationDirection::Forward => PaginationDirection::Backward,
             PaginationDirection::Backward => PaginationDirection::Forward,
         };
-        
+
         Self {
             cursor: self.cursor.clone(),
             start: self.start,
@@ -98,7 +92,7 @@ impl PaginationToken {
 }
 
 /// 分页结果
-/// 
+///
 /// 包含当前页的数据和分页状态信息。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PagedResult<T> {
@@ -125,26 +119,14 @@ impl<T> PagedResult<T> {
         forward_token: Option<PaginationToken>,
         backward_token: Option<PaginationToken>,
     ) -> Self {
-        Self {
-            items,
-            has_forward,
-            has_backward,
-            forward_token,
-            backward_token,
-            total_count: None,
-        }
+        Self { items, has_forward, has_backward, forward_token, backward_token, total_count: None }
     }
 
     /// 从向量创建分页结果（向前分页）。
     ///
     /// 返回的 forward_token 指向当前页的起始位置 (start)，
     /// 调用方需要调用 `token.next_token()` 获取下一页的令牌。
-    pub fn from_vec(
-        items: Vec<T>,
-        start: usize,
-        page_size: usize,
-        cursor: String,
-    ) -> Self {
+    pub fn from_vec(items: Vec<T>, start: usize, page_size: usize, cursor: String) -> Self {
         let has_more = items.len() == page_size;
         let forward_token = if has_more {
             Some(PaginationToken::forward(cursor.clone(), start, page_size))
@@ -258,7 +240,7 @@ impl PaginationState {
     pub fn next_forward(&mut self) -> Option<PaginationToken> {
         self.current_token.take().map(|token| {
             let next = token.next_token();
-            self.backward_history.push(token);  // 保存历史以便返回
+            self.backward_history.push(token); // 保存历史以便返回
             self.current_token = Some(next.clone());
             self.page_count += 1;
             next
@@ -269,7 +251,7 @@ impl PaginationState {
     pub fn next_backward(&mut self) -> Option<PaginationToken> {
         self.current_token.take().map(|token| {
             let prev = token.reverse_direction();
-            self.forward_history.push(token);  // 保存历史以便返回
+            self.forward_history.push(token); // 保存历史以便返回
             self.current_token = Some(prev.clone());
             self.page_count += 1;
             prev
@@ -322,7 +304,7 @@ mod tests {
     fn test_pagination_token_forward() {
         let token = PaginationToken::forward("cursor1".to_string(), 0, 20);
         let next = token.next_token();
-        
+
         assert_eq!(next.start, 20);
         assert_eq!(next.size, 20);
         assert_eq!(next.direction, PaginationDirection::Forward);
@@ -332,7 +314,7 @@ mod tests {
     fn test_pagination_token_backward() {
         let token = PaginationToken::backward("cursor1".to_string(), 40, 20);
         let prev = token.next_token();
-        
+
         assert_eq!(prev.start, 20);
         assert_eq!(prev.direction, PaginationDirection::Backward);
     }
@@ -340,14 +322,9 @@ mod tests {
     #[test]
     fn test_paged_result_bidirectional() {
         let items = vec![1, 2, 3, 4, 5];
-        let result = PagedResult::from_vec_bidirectional(
-            items, 
-            20, 
-            5, 
-            "cursor".to_string(),
-            Some(100),
-        );
-        
+        let result =
+            PagedResult::from_vec_bidirectional(items, 20, 5, "cursor".to_string(), Some(100));
+
         assert_eq!(result.len(), 5);
         assert!(result.can_paginate_forward());
         assert!(result.can_paginate_backward());
@@ -356,17 +333,17 @@ mod tests {
     #[test]
     fn test_pagination_state_forward() {
         let mut state = PaginationState::first_page("cursor".to_string(), 20);
-        
+
         assert_eq!(state.page_count(), 0);
-        
+
         let token1 = state.next_forward();
         assert!(token1.is_some());
         assert_eq!(state.page_count(), 1);
-        
+
         let token2 = state.next_forward();
         assert!(token2.is_some());
         assert_eq!(state.page_count(), 2);
-        
+
         assert!(state.can_go_back());
     }
 
@@ -374,7 +351,7 @@ mod tests {
     fn test_pagination_state_backward() {
         let mut state = PaginationState::first_page("cursor".to_string(), 20);
         state.next_forward();
-        
+
         let backward_token = state.next_backward();
         assert!(backward_token.is_some());
     }
@@ -384,7 +361,7 @@ mod tests {
         let mut state = PaginationState::first_page("cursor".to_string(), 20);
         state.next_forward();
         state.next_forward();
-        
+
         assert!(state.can_go_back());
         assert!(state.go_back().is_some());
         assert_eq!(state.page_count(), 2);

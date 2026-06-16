@@ -2,13 +2,14 @@
 //!
 //! 包含 SocialFeed 结构体定义、创建、状态恢复和 Room 识别逻辑。
 
-use matrix_sdk::{room::Room, Client};
-use matrix_sdk::ruma::OwnedRoomId;
-use crate::types::config::Config;
-use crate::services::cache::ProfileCache;
-use crate::services::aggregation::AggregationCache;
-use crate::services::rate_limit::RateLimiter;
 use std::sync::Arc;
+
+use matrix_sdk::{room::Room, ruma::OwnedRoomId, Client};
+
+use crate::{
+    services::{aggregation::AggregationCache, cache::ProfileCache, rate_limit::RateLimiter},
+    types::config::Config,
+};
 
 /// 社交动态管理器。关注/取关/信息流的状态由 Matrix SDK 持久化，
 /// 不另存内存副本，重启后自动恢复。
@@ -49,7 +50,8 @@ impl SocialFeed {
     }
 
     /// 从 SDK 持久化数据中恢复 my_feed_room_id。
-    /// feed Room 的判断依据：已加入的公开 Room，名称与配置匹配，topic 与配置匹配。
+    /// feed Room 的判断依据：已加入的公开 Room，名称与配置匹配，topic
+    /// 与配置匹配。
     fn restore_state(&mut self) {
         for room in self.client.joined_rooms() {
             if self.is_feed_room(&room) {
@@ -62,12 +64,10 @@ impl SocialFeed {
     /// 判断一个 Room 是否为 feed Room。
     /// 条件：名称与配置后缀匹配，且 topic 与配置前缀匹配。
     pub(crate) fn is_feed_room(&self, room: &Room) -> bool {
-        let name_match = room.name()
-            .map(|n| self.config.matches_feed_room_name(&n))
-            .unwrap_or(false);
-        let topic_match = room.topic()
-            .map(|t| self.config.matches_feed_room_topic(&t))
-            .unwrap_or(false);
+        let name_match =
+            room.name().map(|n| self.config.matches_feed_room_name(&n)).unwrap_or(false);
+        let topic_match =
+            room.topic().map(|t| self.config.matches_feed_room_topic(&t)).unwrap_or(false);
         name_match && topic_match
     }
 }

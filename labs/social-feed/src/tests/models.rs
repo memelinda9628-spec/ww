@@ -1,7 +1,8 @@
 //! 数据模型单元测试
 
-use crate::{Moment, UserProfile};
 use chrono::Utc;
+
+use crate::{Moment, UserProfile};
 
 #[test]
 fn test_moment_creation() {
@@ -10,8 +11,8 @@ fn test_moment_creation() {
         author_id: "@alice:example.com".to_string(),
         author_name: "Alice".to_string(),
         author_avatar: None,
-            text: "Hello World!".to_string(),
-            images: vec![],
+        text: "Hello World!".to_string(),
+        images: vec![],
         created_at: Utc::now(),
         like_count: 0,
         comment_count: 0,
@@ -30,8 +31,8 @@ fn test_moment_clone() {
         author_id: "@bob:example.com".to_string(),
         author_name: "Bob".to_string(),
         author_avatar: None,
-            text: "Test message".to_string(),
-            images: vec![],
+        text: "Test message".to_string(),
+        images: vec![],
         created_at: Utc::now(),
         like_count: 0,
         comment_count: 0,
@@ -49,11 +50,11 @@ fn test_user_profile_creation() {
         display_name: Some("Alice".to_string()),
         feed_room_id: "!feed_alice:example.com".to_string(),
         avatar_url: None,
-            bio: None,
-            location: None,
-            follower_count: 42,
-            following_count: 0,
-            moments_count: 0,
+        bio: None,
+        location: None,
+        follower_count: 42,
+        following_count: 0,
+        moments_count: 0,
     };
 
     assert_eq!(profile.user_id, "@alice:example.com");
@@ -69,16 +70,15 @@ fn test_user_profile_serialization() {
         display_name: Some("Alice".to_string()),
         feed_room_id: "!feed_alice:example.com".to_string(),
         avatar_url: None,
-            bio: None,
-            location: None,
-            follower_count: 10,
-            following_count: 0,
-            moments_count: 0,
+        bio: None,
+        location: None,
+        follower_count: 10,
+        following_count: 0,
+        moments_count: 0,
     };
 
     let json = serde_json::to_string(&profile).expect("Serialization failed");
-    let deserialized: UserProfile =
-        serde_json::from_str(&json).expect("Deserialization failed");
+    let deserialized: UserProfile = serde_json::from_str(&json).expect("Deserialization failed");
 
     assert_eq!(profile.user_id, deserialized.user_id);
     assert_eq!(profile.display_name, deserialized.display_name);
@@ -94,16 +94,15 @@ fn test_moment_serialization() {
         author_id: "@charlie:example.com".to_string(),
         author_name: "Charlie".to_string(),
         author_avatar: None,
-            text: "Serialization test".to_string(),
-            images: vec![],
+        text: "Serialization test".to_string(),
+        images: vec![],
         created_at: now,
         like_count: 0,
         comment_count: 0,
     };
 
     let json = serde_json::to_string(&moment).expect("Serialization failed");
-    let deserialized: Moment =
-        serde_json::from_str(&json).expect("Deserialization failed");
+    let deserialized: Moment = serde_json::from_str(&json).expect("Deserialization failed");
 
     assert_eq!(moment.id, deserialized.id);
     assert_eq!(moment.author_id, deserialized.author_id);
@@ -121,8 +120,8 @@ fn test_moment_timestamp_ordering() {
         author_id: "@alice:example.com".to_string(),
         author_name: "Alice".to_string(),
         author_avatar: None,
-            text: "First".to_string(),
-            images: vec![],
+        text: "First".to_string(),
+        images: vec![],
         created_at: t1,
         like_count: 0,
         comment_count: 0,
@@ -133,8 +132,8 @@ fn test_moment_timestamp_ordering() {
         author_id: "@alice:example.com".to_string(),
         author_name: "Alice".to_string(),
         author_avatar: None,
-            text: "Second".to_string(),
-            images: vec![],
+        text: "Second".to_string(),
+        images: vec![],
         created_at: t2,
         like_count: 0,
         comment_count: 0,
@@ -145,8 +144,8 @@ fn test_moment_timestamp_ordering() {
         author_id: "@alice:example.com".to_string(),
         author_name: "Alice".to_string(),
         author_avatar: None,
-            text: "Third".to_string(),
-            images: vec![],
+        text: "Third".to_string(),
+        images: vec![],
         created_at: t3,
         like_count: 0,
         comment_count: 0,
@@ -168,8 +167,8 @@ fn test_empty_moment_text() {
         author_id: "@alice:example.com".to_string(),
         author_name: "Alice".to_string(),
         author_avatar: None,
-            text: String::new(),
-            images: vec![],
+        text: String::new(),
+        images: vec![],
         created_at: Utc::now(),
         like_count: 0,
         comment_count: 0,
@@ -186,11 +185,11 @@ fn test_zero_followers() {
         display_name: Some("New User".to_string()),
         feed_room_id: "!new_room:example.com".to_string(),
         avatar_url: None,
-            bio: None,
-            location: None,
-            follower_count: 0,
-            following_count: 0,
-            moments_count: 0,
+        bio: None,
+        location: None,
+        follower_count: 0,
+        following_count: 0,
+        moments_count: 0,
     };
 
     assert_eq!(profile.follower_count, 0);

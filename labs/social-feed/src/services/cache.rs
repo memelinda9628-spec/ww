@@ -3,10 +3,13 @@
 //! 提供用户 profile、头像等数据的缓存机制，避免频繁的 API 调用。
 //! 支持 TTL 过期和事件驱动的热失效机制。
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-use matrix_sdk::ruma::{OwnedUserId, OwnedRoomId};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use matrix_sdk::ruma::{OwnedRoomId, OwnedUserId};
 use tokio::sync::RwLock;
 
 /// 缓存条目，包含数据和过期时间
@@ -92,13 +95,18 @@ impl ProfileCache {
     }
 
     /// 将 profile 写入缓存
-    pub async fn set(&self, user_id: OwnedUserId, display_name: String, avatar_url: Option<String>) {
+    pub async fn set(
+        &self,
+        user_id: OwnedUserId,
+        display_name: String,
+        avatar_url: Option<String>,
+    ) {
         let key = user_id.to_string();
         let mut version = self.version_counter.write().await;
         *version += 1;
 
         let mut profiles = self.profiles.write().await;
-        
+
         // LRU 淘汰：如果超过最大数量，删除最后访问的
         if profiles.len() >= self.max_entries && !profiles.contains_key(&key) {
             // 复制 key 以避免借用冲突
@@ -108,11 +116,14 @@ impl ProfileCache {
             }
         }
 
-        profiles.insert(key, CacheEntry {
-            value: (display_name, avatar_url),
-            expires_at: Instant::now() + self.ttl,
-            version: *version,
-        });
+        profiles.insert(
+            key,
+            CacheEntry {
+                value: (display_name, avatar_url),
+                expires_at: Instant::now() + self.ttl,
+                version: *version,
+            },
+        );
     }
 
     /// 清除过期的缓存条目
@@ -133,9 +144,10 @@ impl ProfileCache {
     pub async fn invalidate(&self, user_id: &OwnedUserId) {
         let mut profiles = self.profiles.write().await;
         profiles.remove(&user_id.to_string());
-        
+
         // 通知监听器
-        self.emit_invalidation_event(CacheInvalidationEvent::UserProfileChanged(user_id.clone())).await;
+        self.emit_invalidation_event(CacheInvalidationEvent::UserProfileChanged(user_id.clone()))
+            .await;
     }
 
     /// 批量失效缓存
@@ -144,7 +156,7 @@ impl ProfileCache {
         for user_id in &user_ids {
             profiles.remove(&user_id.to_string());
         }
-        
+
         // 通知监听器
         self.emit_invalidation_event(CacheInvalidationEvent::BatchInvalidate(user_ids)).await;
     }
@@ -184,8 +196,9 @@ impl ProfileCache {
 
     /// 根据房间 ID 失效所有成员的缓存
     pub async fn invalidate_room_members(&self, room_id: &OwnedRoomId) {
-        self.profiles.write().await.clear();  // 简单起见，清除全部
-        self.emit_invalidation_event(CacheInvalidationEvent::RoomMemberInvalidate(room_id.clone())).await;
+        self.profiles.write().await.clear(); // 简单起见，清除全部
+        self.emit_invalidation_event(CacheInvalidationEvent::RoomMemberInvalidate(room_id.clone()))
+            .await;
     }
 }
 
@@ -203,9 +216,11 @@ mod tests {
     async fn test_cache_set_and_get() {
         let cache = ProfileCache::new();
         let user_id = "@alice:example.com".parse::<OwnedUserId>().unwrap();
-        
-        cache.set(user_id.clone(), "Alice".to_string(), Some("mxc://example.com/avatar".to_string())).await;
-        
+
+        cache
+            .set(user_id.clone(), "Alice".to_string(), Some("mxc://example.com/avatar".to_string()))
+            .await;
+
         let result = cache.get(&user_id).await;
         assert!(result.is_some());
         let (name, avatar) = result.unwrap();
@@ -217,10 +232,10 @@ mod tests {
     async fn test_cache_invalidate() {
         let cache = ProfileCache::new();
         let user_id = "@bob:example.com".parse::<OwnedUserId>().unwrap();
-        
+
         cache.set(user_id.clone(), "Bob".to_string(), None).await;
         assert!(cache.get(&user_id).await.is_some());
-        
+
         cache.invalidate(&user_id).await;
         assert!(cache.get(&user_id).await.is_none());
     }
@@ -229,10 +244,10 @@ mod tests {
     async fn test_cache_clear() {
         let cache = ProfileCache::new();
         let user_id = "@charlie:example.com".parse::<OwnedUserId>().unwrap();
-        
+
         cache.set(user_id, "Charlie".to_string(), None).await;
         assert!(!cache.is_empty().await);
-        
+
         cache.clear().await;
         assert!(cache.is_empty().await);
     }
@@ -240,15 +255,15 @@ mod tests {
     #[tokio::test]
     async fn test_cache_max_entries() {
         let cache = ProfileCache::with_ttl(Duration::from_secs(3600), 2);
-        
+
         let uid1 = "@user1:example.com".parse::<OwnedUserId>().unwrap();
         let uid2 = "@user2:example.com".parse::<OwnedUserId>().unwrap();
         let uid3 = "@user3:example.com".parse::<OwnedUserId>().unwrap();
-        
+
         cache.set(uid1, "User1".to_string(), None).await;
         cache.set(uid2, "User2".to_string(), None).await;
         assert_eq!(cache.len().await, 2);
-        
+
         // 添加第三个时应该淘汰一个
         cache.set(uid3, "User3".to_string(), None).await;
         assert_eq!(cache.len().await, 2);

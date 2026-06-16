@@ -2,10 +2,10 @@
 //!
 //! 包含内部辅助函数。
 
+use matrix_sdk::{room::Room, ruma::OwnedRoomId};
+
 use super::feed::SocialFeed;
 use crate::types::error::{Result, SocialFeedError};
-use matrix_sdk::room::Room;
-use matrix_sdk::ruma::OwnedRoomId;
 
 impl SocialFeed {
     pub(crate) fn get_my_room(&self) -> Result<Room> {
@@ -16,9 +16,8 @@ impl SocialFeed {
     }
 
     pub(crate) fn get_room(&self, room_id: &str) -> Result<Room> {
-        let rid: OwnedRoomId = room_id
-            .try_into()
-            .map_err(|_| SocialFeedError::InvalidRoomId(room_id.to_string()))?;
+        let rid: OwnedRoomId =
+            room_id.try_into().map_err(|_| SocialFeedError::InvalidRoomId(room_id.to_string()))?;
         self.client.get_room(&rid).ok_or(SocialFeedError::RoomNotFound)
     }
 }

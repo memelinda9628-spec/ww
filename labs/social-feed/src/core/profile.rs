@@ -1,23 +1,23 @@
-//! 个人主页管理模块 [create_profile / set_avatar / update_bio / update_location]
+//! 个人主页管理模块 [create_profile / set_avatar / update_bio /
+//! update_location]
 //!
 //! 包含创建、查询、更新个人主页的相关功能。
 
-use super::feed::SocialFeed;
-use crate::types::models::UserProfile;
-use crate::types::error::{Result, SocialFeedError};
 use matrix_sdk::ruma::{
-    api::client::room::create_room::v3::Request as CreateRoomRequest,
-    api::client::room::Visibility,
+    api::client::room::{create_room::v3::Request as CreateRoomRequest, Visibility},
     MxcUri,
+};
+
+use super::feed::SocialFeed;
+use crate::types::{
+    error::{Result, SocialFeedError},
+    models::UserProfile,
 };
 
 impl SocialFeed {
     /// 创建个人主页（公开 Room，世界可读）。
     /// 每个用户只能有一个 feed Room，重复调用会返回已有信息。
-    pub async fn create_profile(
-        &mut self,
-        display_name: &str,
-    ) -> Result<UserProfile> {
+    pub async fn create_profile(&mut self, display_name: &str) -> Result<UserProfile> {
         if self.my_feed_room_id.is_some() {
             return self.get_my_profile().await;
         }
@@ -37,11 +37,7 @@ impl SocialFeed {
         let room_id = room.room_id().to_owned();
         self.my_feed_room_id = Some(room_id.clone());
 
-        let user_id = self
-            .client
-            .user_id()
-            .ok_or(SocialFeedError::NotAuthenticated)?
-            .to_string();
+        let user_id = self.client.user_id().ok_or(SocialFeedError::NotAuthenticated)?.to_string();
 
         Ok(UserProfile {
             user_id,
@@ -58,22 +54,17 @@ impl SocialFeed {
 
     /// 获取个人主页信息
     pub async fn get_my_profile(&self) -> Result<UserProfile> {
-        let room_id = self
-            .my_feed_room_id
-            .as_ref()
-            .ok_or(SocialFeedError::ProfileNotFound)?;
+        let room_id = self.my_feed_room_id.as_ref().ok_or(SocialFeedError::ProfileNotFound)?;
 
         let room = self.client.get_room(room_id).ok_or(SocialFeedError::RoomNotFound)?;
 
-        let members_count = room.members(matrix_sdk::RoomMemberships::all()).await
+        let members_count = room
+            .members(matrix_sdk::RoomMemberships::all())
+            .await
             .map(|members| members.len())
             .unwrap_or(0);
 
-        let user_id = self
-            .client
-            .user_id()
-            .ok_or(SocialFeedError::NotAuthenticated)?
-            .to_string();
+        let user_id = self.client.user_id().ok_or(SocialFeedError::NotAuthenticated)?.to_string();
 
         Ok(UserProfile {
             user_id,
@@ -89,69 +80,67 @@ impl SocialFeed {
     }
 
     /// 设置头像 URL
-    /// 
+    ///
     /// 接收已上传的 mxc:// URI（由客户端上传图片生成）。
     /// 本层只负责协议操作：将 mxc:// URI 写入 Room 状态。
     pub async fn set_avatar(&mut self, mxc_uri: &str) -> Result<()> {
         let room = self.get_my_room()?;
-        
+
         // MxcUri 是 unsized type，需要转换为 &MxcUri
-        let avatar_uri: &MxcUri = mxc_uri.try_into()
-            .map_err(|_| SocialFeedError::InvalidUrl(mxc_uri.to_string()))?;
-        
+        let avatar_uri: &MxcUri =
+            mxc_uri.try_into().map_err(|_| SocialFeedError::InvalidUrl(mxc_uri.to_string()))?;
+
         room.set_avatar_url(avatar_uri, None)
             .await
             .map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
-        
+
         Ok(())
     }
 
     /// 更新用户简介
-    /// 
+    ///
     /// 注意：和 update_location 共享同一 topic 字段，
     /// 本方法只替换 bio 部分，保留已有的 Location: 部分。
     pub async fn update_bio(&mut self, bio: &str) -> Result<()> {
         let room = self.get_my_room()?;
         let current_topic = room.topic().unwrap_or_default();
-        
+
         let new_topic = rebuild_topic(&current_topic, Some(bio), None);
-        
+
         room.set_room_topic(&new_topic)
             .await
             .map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
-        
+
         Ok(())
     }
 
     /// 更新用户位置
-    /// 
+    ///
     /// 注意：和 update_bio 共享同一 topic 字段，
     /// 本方法只替换 Location: 部分，保留已有的 bio。
     pub async fn update_location(&mut self, location: &str) -> Result<()> {
         let room = self.get_my_room()?;
         let current_topic = room.topic().unwrap_or_default();
-        
+
         let new_topic = rebuild_topic(&current_topic, None, Some(location));
-        
+
         room.set_room_topic(&new_topic)
             .await
             .map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
-        
+
         Ok(())
     }
 
     /// 更新显示名称
-    /// 
+    ///
     /// 通过更新 Room 的 m.room.name 状态事件。
     pub async fn update_display_name(&mut self, display_name: &str) -> Result<()> {
         let room = self.get_my_room()?;
-        
+
         let new_name = self.config.feed_room_name(display_name);
-        
-        room.set_name(new_name)
-            .await
-            .map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
-        
+
+        room.set_name(new_name).await.map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
+
         Ok(())
     }
 }

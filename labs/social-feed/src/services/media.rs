@@ -1,4 +1,5 @@
-//! 多媒体处理模块 [MediaMetadata / MediaUploadConfig，供 App 层在上传前验证格式/大小]
+//! 多媒体处理模块 [MediaMetadata / MediaUploadConfig，供 App
+//! 层在上传前验证格式/大小]
 //!
 //! 支持图片上传、缩放、格式转换和媒体服务器集成。
 
@@ -81,10 +82,7 @@ impl MediaMetadata {
     /// 验证媒体大小限制
     pub fn validate_size(&self, max_size_bytes: u64) -> Result<(), String> {
         if self.size > max_size_bytes {
-            Err(format!(
-                "媒体大小 {} 字节超过限制 {} 字节",
-                self.size, max_size_bytes
-            ))
+            Err(format!("媒体大小 {} 字节超过限制 {} 字节", self.size, max_size_bytes))
         } else {
             Ok(())
         }
@@ -92,16 +90,14 @@ impl MediaMetadata {
 
     /// 检查是否为支持的格式
     pub fn is_supported_format(&self) -> bool {
-        matches!(
-            self.media_type,
-            MediaType::Image | MediaType::Video | MediaType::Audio
-        )
+        matches!(self.media_type, MediaType::Image | MediaType::Video | MediaType::Audio)
     }
 
     /// 生成缩略图 URL（使用 Matrix 媒体服务器缩放）
     pub fn build_thumbnail_url(&self, width: u32, height: u32) -> Option<String> {
         if self.media_type == MediaType::Image {
-            // matrix 缩略图 API 格式：/_matrix/media/r0/thumbnail/{serverName}/{mediaId}?width=X&height=Y
+            // matrix 缩略图 API
+            // 格式：/_matrix/media/r0/thumbnail/{serverName}/{mediaId}?width=X&height=Y
             if let Some(path) = self.url.strip_prefix("mxc://") {
                 let parts: Vec<&str> = path.split('/').collect();
                 if parts.len() == 2 {
@@ -172,7 +168,7 @@ impl MediaUploadConfig {
     /// 验证 MIME 类型
     pub fn validate_mime_type(&self, mime_type: &str) -> Result<MediaType, String> {
         let media_type = MediaType::from_mime(mime_type);
-        
+
         match media_type {
             MediaType::Image => {
                 if self.supported_image_formats.contains(&mime_type.to_string()) {
@@ -215,10 +211,7 @@ pub struct MediaProcessor;
 
 impl MediaProcessor {
     /// 验证媒体
-    pub fn validate(
-        media: &MediaMetadata,
-        config: &MediaUploadConfig,
-    ) -> Result<(), String> {
+    pub fn validate(media: &MediaMetadata, config: &MediaUploadConfig) -> Result<(), String> {
         // 验证格式
         config.validate_mime_type(&media.mime_type)?;
 
@@ -237,7 +230,7 @@ impl MediaProcessor {
                     Some(MediaMetadata::new(
                         url.clone(),
                         "image/jpeg".to_string(), // 默认假设为图片
-                        0, // 大小未知
+                        0,                        // 大小未知
                     ))
                 } else {
                     None
@@ -308,7 +301,7 @@ mod tests {
     #[test]
     fn test_media_upload_config_validation() {
         let config = MediaUploadConfig::default();
-        
+
         assert!(config.validate_mime_type("image/jpeg").is_ok());
         assert!(config.validate_mime_type("image/unsupported").is_err());
         assert!(config.validate_mime_type("video/mp4").is_ok());
@@ -316,10 +309,8 @@ mod tests {
 
     #[test]
     fn test_media_processor_extract() {
-        let urls = vec![
-            "mxc://example.com/img1".to_string(),
-            "https://example.com/img2".to_string(),
-        ];
+        let urls =
+            vec!["mxc://example.com/img1".to_string(), "https://example.com/img2".to_string()];
 
         let media = MediaProcessor::extract_media_from_urls(&urls);
         assert_eq!(media.len(), 1); // 只提取 mxc 开头的
@@ -327,11 +318,8 @@ mod tests {
 
     #[test]
     fn test_media_processor_summary() {
-        let media = MediaMetadata::new(
-            "mxc://example.com/abc".to_string(),
-            "image/jpeg".to_string(),
-            1024,
-        );
+        let media =
+            MediaMetadata::new("mxc://example.com/abc".to_string(), "image/jpeg".to_string(), 1024);
 
         let summary = MediaProcessor::generate_summary(&media, "Beautiful sunset");
         assert!(summary.contains("图片"));

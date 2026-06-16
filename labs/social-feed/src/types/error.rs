@@ -127,10 +127,7 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        assert_eq!(
-            SocialFeedError::ProfileNotFound.to_string(),
-            "个人主页不存在，请先创建"
-        );
+        assert_eq!(SocialFeedError::ProfileNotFound.to_string(), "个人主页不存在，请先创建");
     }
 
     #[test]
@@ -151,7 +148,8 @@ mod tests {
     #[test]
     fn test_error_from_json() {
         let json_err = r#"{"invalid": json"#;
-        let parse_err: serde_json::Error = serde_json::from_str::<serde_json::Value>(json_err).unwrap_err();
+        let parse_err: serde_json::Error =
+            serde_json::from_str::<serde_json::Value>(json_err).unwrap_err();
         let err: SocialFeedError = parse_err.into();
         match err {
             SocialFeedError::InvalidJson(_) => (),

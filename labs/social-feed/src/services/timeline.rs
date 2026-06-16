@@ -1,49 +1,45 @@
-//! 信息流和动态管理模块 [post_moment / timeline / user_moments / fetch_room_moments]
+//! 信息流和动态管理模块 [post_moment / timeline / user_moments /
+//! fetch_room_moments]
 //!
 //! 包含发布动态、拉取信息流、查看单用户动态等功能。
 
-use crate::types::models::Moment;
-use crate::types::error::{Result, SocialFeedError};
-use crate::core::feed::SocialFeed;
-use crate::services::aggregation::AggregationStats;
-use crate::services::rate_limit::OperationType;
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
-use matrix_sdk::room::Room;
-use matrix_sdk::ruma::{
-    events::room::message::RoomMessageEventContent,
-    OwnedRoomId, OwnedUserId,
+use matrix_sdk::{
+    room::Room,
+    ruma::{events::room::message::RoomMessageEventContent, OwnedRoomId, OwnedUserId},
 };
 use matrix_sdk_ui::timeline::RoomExt;
-use std::collections::HashMap;
 use tracing::warn;
+
+use crate::{
+    core::feed::SocialFeed,
+    services::{aggregation::AggregationStats, rate_limit::OperationType},
+    types::{
+        error::{Result, SocialFeedError},
+        models::Moment,
+    },
+};
 
 impl SocialFeed {
     /// 发布一条动态到自己的主页，返回 event_id
-    pub async fn post_moment(
-        &self,
-        text: &str,
-        image_urls: &[String],
-    ) -> Result<String> {
+    pub async fn post_moment(&self, text: &str, image_urls: &[String]) -> Result<String> {
         self.rate_limiter.wait_until_allowed(OperationType::PostMoment).await;
         let room = self.get_my_room()?;
 
         let content = if image_urls.is_empty() {
             RoomMessageEventContent::text_plain(text)
         } else {
-            let md = image_urls
-                .iter()
-                .map(|u| format!("![]({})", u))
-                .collect::<Vec<_>>()
-                .join("\n");
+            let md =
+                image_urls.iter().map(|u| format!("![]({})", u)).collect::<Vec<_>>().join("\n");
             let md_full = format!("{}\n\n{}", text, md);
             // 使用 text_plain 避免 MD 字符串被当作 HTML 渲染
             RoomMessageEventContent::text_plain(md_full)
         };
 
-        let response = room
-            .send(content)
-            .await
-            .map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
+        let response =
+            room.send(content).await.map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
 
         Ok(response.response.event_id.to_string())
     }
@@ -57,9 +53,8 @@ impl SocialFeed {
 
         let mut all: Vec<Moment> = Vec::new();
         for rid in &room_ids {
-            let parsed: OwnedRoomId = rid.as_str()
-                .try_into()
-                .map_err(|_| SocialFeedError::InvalidRoomId(rid.clone()))?;
+            let parsed: OwnedRoomId =
+                rid.as_str().try_into().map_err(|_| SocialFeedError::InvalidRoomId(rid.clone()))?;
             if let Some(room) = self.client.get_room(&parsed) {
                 let moments = self.fetch_room_moments(&room, page_size).await?;
                 all.extend(moments);
@@ -81,8 +76,7 @@ impl SocialFeed {
         let rid: OwnedRoomId = feed_room_id
             .try_into()
             .map_err(|_| SocialFeedError::InvalidRoomId(feed_room_id.to_string()))?;
-        let room = self.client.get_room(&rid)
-            .ok_or(SocialFeedError::RoomNotFound)?;
+        let room = self.client.get_room(&rid).ok_or(SocialFeedError::RoomNotFound)?;
         self.fetch_room_moments(&room, page_size).await
     }
 
@@ -91,8 +85,8 @@ impl SocialFeed {
         room: &Room,
         page_size: u32,
     ) -> Result<Vec<Moment>> {
-        let timeline = room.timeline().await
-            .map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
+        let timeline =
+            room.timeline().await.map_err(|e| SocialFeedError::SdkError(e.to_string()))?;
 
         let items = timeline.items().await;
 
@@ -110,7 +104,9 @@ impl SocialFeed {
             let Some(msg) = event.content().as_message() else { continue };
 
             let text = msg.body().to_owned();
-            let ts = event.timestamp().to_system_time()
+            let ts = event
+                .timestamp()
+                .to_system_time()
                 .map(DateTime::from)
                 .unwrap_or_else(|| Utc::now());
             let event_id = match event.event_id() {
@@ -137,14 +133,10 @@ impl SocialFeed {
 
             // 点赞计数
             if let Some(reactions) = event.content().reactions() {
-                let reaction_count: u64 = reactions
-                    .values()
-                    .map(|by_user| by_user.len() as u64)
-                    .sum();
+                let reaction_count: u64 =
+                    reactions.values().map(|by_user| by_user.len() as u64).sum();
                 if reaction_count > 0 {
-                    let target_id = event.event_id()
-                        .map(|id| id.to_string())
-                        .unwrap_or_default();
+                    let target_id = event.event_id().map(|id| id.to_string()).unwrap_or_default();
                     *like_counts.entry(target_id).or_insert(0) += reaction_count;
                 }
             }
@@ -156,11 +148,7 @@ impl SocialFeed {
             batch_updates.push((
                 room_id_str.clone(),
                 msg.event_id.clone(),
-                AggregationStats {
-                    like_count: likes,
-                    reply_count: 0,
-                    forward_count: 0,
-                },
+                AggregationStats { like_count: likes, reply_count: 0, forward_count: 0 },
             ));
         }
 
@@ -172,15 +160,19 @@ impl SocialFeed {
         for msg in &raw_msgs {
             let uid = &msg.sender;
             let uid_str = uid.to_string();
-            
+
             if !sender_names.contains_key(&uid_str) {
                 // 先检查缓存
-                let display_name = if let Some((name, _avatar)) = self.profile_cache.get(uid).await {
+                let display_name = if let Some((name, _avatar)) = self.profile_cache.get(uid).await
+                {
                     name
                 } else {
                     // 缓存未命中，尝试从 Room members 获取
-                    let name = if let Ok(members) = room.members(matrix_sdk::RoomMemberships::all()).await {
-                        members.iter()
+                    let name = if let Ok(members) =
+                        room.members(matrix_sdk::RoomMemberships::all()).await
+                    {
+                        members
+                            .iter()
                             .find(|m| m.user_id() == uid)
                             .and_then(|m| m.display_name())
                             .map(|n| n.to_string())
@@ -189,12 +181,12 @@ impl SocialFeed {
                     } else {
                         uid_str.clone()
                     };
-                    
+
                     // 缓存结果
                     self.profile_cache.set(uid.clone(), name.clone(), None).await;
                     name
                 };
-                
+
                 sender_names.insert(uid_str, display_name);
             }
         }
@@ -220,7 +212,7 @@ impl SocialFeed {
                 },
                 created_at: msg.ts,
                 like_count: like_counts.get(&msg.event_id).copied().unwrap_or(0),
-                comment_count: 0,  // TODO: 接入 m.in_reply_to 计数（需 SDK 暴露 relation 字段）
+                comment_count: 0, // TODO: 接入 m.in_reply_to 计数（需 SDK 暴露 relation 字段）
             });
         }
 

@@ -1,39 +1,36 @@
 //! SocialFeed 交互功能测试
 
-use crate::Moment;
 use chrono::Utc;
+
+use crate::Moment;
 
 /// 测试用例：信息流聚合逻辑
 #[test]
 fn test_timeline_aggregation_logic() {
     // 模拟多个用户的动态
-    let alice_moments = vec![
-        Moment {
-            id: "$alice_1".to_string(),
-            author_id: "@alice:example.com".to_string(),
-            author_name: "Alice".to_string(),
-            author_avatar: None,
-            text: "Alice's first post".to_string(),
-            images: vec![],
-            created_at: Utc::now(),
-            like_count: 0,
-            comment_count: 0,
-        },
-    ];
+    let alice_moments = vec![Moment {
+        id: "$alice_1".to_string(),
+        author_id: "@alice:example.com".to_string(),
+        author_name: "Alice".to_string(),
+        author_avatar: None,
+        text: "Alice's first post".to_string(),
+        images: vec![],
+        created_at: Utc::now(),
+        like_count: 0,
+        comment_count: 0,
+    }];
 
-    let bob_moments = vec![
-        Moment {
-            id: "$bob_1".to_string(),
-            author_id: "@bob:example.com".to_string(),
-            author_name: "Bob".to_string(),
-            author_avatar: None,
-            text: "Bob's post".to_string(),
-            images: vec![],
-            created_at: Utc::now() + chrono::Duration::seconds(5),
-            like_count: 0,
-            comment_count: 0,
-        },
-    ];
+    let bob_moments = vec![Moment {
+        id: "$bob_1".to_string(),
+        author_id: "@bob:example.com".to_string(),
+        author_name: "Bob".to_string(),
+        author_avatar: None,
+        text: "Bob's post".to_string(),
+        images: vec![],
+        created_at: Utc::now() + chrono::Duration::seconds(5),
+        like_count: 0,
+        comment_count: 0,
+    }];
 
     // 聚合信息流
     let mut all_moments = vec![];
@@ -71,16 +68,12 @@ fn test_follow_unfollow_state_transition() {
 #[test]
 fn test_following_chain() {
     // Alice 关注 Bob 和 Charlie
-    let mut alice_following = vec![
-        "!bob_feed:example.com".to_string(),
-        "!charlie_feed:example.com".to_string(),
-    ];
+    let mut alice_following =
+        vec!["!bob_feed:example.com".to_string(), "!charlie_feed:example.com".to_string()];
 
     // Bob 关注 Alice 和 David
-    let bob_following = vec![
-        "!alice_feed:example.com".to_string(),
-        "!david_feed:example.com".to_string(),
-    ];
+    let bob_following =
+        vec!["!alice_feed:example.com".to_string(), "!david_feed:example.com".to_string()];
 
     // 验证交叉关注
     assert!(alice_following.contains(&"!bob_feed:example.com".to_string()));
@@ -216,11 +209,11 @@ fn test_user_profile_update() {
         display_name: Some("Alice".to_string()),
         feed_room_id: "!alice_feed:example.com".to_string(),
         avatar_url: None,
-            bio: None,
-            location: None,
-            follower_count: 5,
-            following_count: 0,
-            moments_count: 0,
+        bio: None,
+        location: None,
+        follower_count: 5,
+        following_count: 0,
+        moments_count: 0,
     };
 
     // 新增一个关注者
@@ -246,22 +239,17 @@ fn test_reaction_aggregation() {
     let mut reactions: Vec<Reaction> = vec![];
 
     // Alice 点赞
-    reactions.push(Reaction {
-        reactor: "@alice:example.com".to_string(),
-        emoji: "👍".to_string(),
-    });
+    reactions
+        .push(Reaction { reactor: "@alice:example.com".to_string(), emoji: "👍".to_string() });
 
     // Bob 点赞
-    reactions.push(Reaction {
-        reactor: "@bob:example.com".to_string(),
-        emoji: "👍".to_string(),
-    });
+    reactions.push(Reaction { reactor: "@bob:example.com".to_string(), emoji: "👍".to_string() });
 
     // Charlie 不同的反应
-    reactions.push(Reaction {
-        reactor: "@charlie:example.com".to_string(),
-        emoji: "❤️".to_string(),
-    });
+    reactions
+        .push(Reaction {
+            reactor: "@charlie:example.com".to_string(), emoji: "❤️".to_string()
+        });
 
     // 统计 👍 的数量
     let thumbs_up_count = reactions.iter().filter(|r| r.emoji == "👍").count();

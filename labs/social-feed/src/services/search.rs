@@ -1,9 +1,11 @@
-//! 搜索和过滤模块 [SearchFilter + SearchEngine，供 App 层对 `Vec<Moment>` 过滤排序]
+//! 搜索和过滤模块 [SearchFilter + SearchEngine，供 App 层对 `Vec<Moment>`
+//! 过滤排序]
 //!
 //! 提供动态内容搜索和高级过滤功能。
 
-use crate::types::models::Moment;
 use chrono::{DateTime, Utc};
+
+use crate::types::models::Moment;
 
 /// 搜索过滤器
 #[derive(Debug, Clone)]
@@ -153,11 +155,7 @@ pub struct SearchEngine;
 impl SearchEngine {
     /// 搜索动态
     pub fn search(moments: &[Moment], filter: &SearchFilter) -> Vec<Moment> {
-        moments
-            .iter()
-            .filter(|m| filter.matches(m))
-            .cloned()
-            .collect()
+        moments.iter().filter(|m| filter.matches(m)).cloned().collect()
     }
 
     /// 对动态进行排序
@@ -186,7 +184,11 @@ impl SearchEngine {
     }
 
     /// 搜索、过滤并排序
-    pub fn search_and_sort(moments: &[Moment], filter: &SearchFilter, sort_by: SortBy) -> Vec<Moment> {
+    pub fn search_and_sort(
+        moments: &[Moment],
+        filter: &SearchFilter,
+        sort_by: SortBy,
+    ) -> Vec<Moment> {
         let mut results = Self::search(moments, filter);
         Self::sort(&mut results, sort_by);
         results
@@ -195,8 +197,9 @@ impl SearchEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::Utc;
+
+    use super::*;
 
     fn create_test_moment(text: &str, author_id: &str, likes: u64, comments: u64) -> Moment {
         Moment {
@@ -290,10 +293,8 @@ mod tests {
 
     #[test]
     fn test_filter_by_min_comments() {
-        let moments = vec![
-            create_test_moment("A", "@a", 0, 1),
-            create_test_moment("B", "@b", 0, 3),
-        ];
+        let moments =
+            vec![create_test_moment("A", "@a", 0, 1), create_test_moment("B", "@b", 0, 3)];
 
         let filter = SearchFilter::new().with_min_comments(2);
         let results = SearchEngine::search(&moments, &filter);
@@ -303,7 +304,10 @@ mod tests {
     #[test]
     fn test_filter_has_images() {
         let moments = vec![
-            Moment { images: vec!["https://img.jpg".into()], ..create_test_moment("with", "@a", 0, 0) },
+            Moment {
+                images: vec!["https://img.jpg".into()],
+                ..create_test_moment("with", "@a", 0, 0)
+            },
             Moment { images: vec![], ..create_test_moment("without", "@b", 0, 0) },
         ];
 
@@ -338,10 +342,8 @@ mod tests {
 
     #[test]
     fn test_filter_default_matches_all() {
-        let moments = vec![
-            create_test_moment("A", "@a", 0, 0),
-            create_test_moment("B", "@b", 0, 0),
-        ];
+        let moments =
+            vec![create_test_moment("A", "@a", 0, 0), create_test_moment("B", "@b", 0, 0)];
         let results = SearchEngine::search(&moments, &SearchFilter::new());
         assert_eq!(results.len(), 2);
     }
@@ -387,9 +389,9 @@ mod tests {
     #[test]
     fn test_sort_by_hot_desc() {
         let mut moments = vec![
-            create_test_moment("A", "@a", 5, 2),   // hot = 7
-            create_test_moment("B", "@b", 3, 10),  // hot = 13
-            create_test_moment("C", "@c", 1, 1),   // hot = 2
+            create_test_moment("A", "@a", 5, 2),  // hot = 7
+            create_test_moment("B", "@b", 3, 10), // hot = 13
+            create_test_moment("C", "@c", 1, 1),  // hot = 2
         ];
         SearchEngine::sort(&mut moments, SortBy::HotDesc);
         assert_eq!(moments[0].like_count + moments[0].comment_count, 13);

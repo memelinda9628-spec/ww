@@ -5,16 +5,21 @@
 
 #[cfg(test)]
 mod advanced_integration_tests {
-    use crate::{Moment, SocialFeedError, Result};
-    use crate::services::cache::{ProfileCache, CacheInvalidationEvent};
-    use crate::services::aggregation::{AggregationCache, AggregationStats};
-    use crate::services::quote_forward::{ForwardMetadata, ForwardManager};
-    use crate::services::pagination::{PaginationToken, PaginationDirection, PagedResult, PaginationState};
-    use crate::services::search_index::SearchIndex;
-    use crate::services::media::{MediaMetadata, MediaUploadConfig, MediaProcessor};
-    use crate::services::rate_limit::{RateLimiter, RateLimitConfig, OperationType};
     use chrono::Utc;
     use matrix_sdk::ruma::OwnedUserId;
+
+    use crate::{
+        services::{
+            aggregation::{AggregationCache, AggregationStats},
+            cache::{CacheInvalidationEvent, ProfileCache},
+            media::{MediaMetadata, MediaProcessor, MediaUploadConfig},
+            pagination::{PagedResult, PaginationDirection, PaginationState, PaginationToken},
+            quote_forward::{ForwardManager, ForwardMetadata},
+            rate_limit::{OperationType, RateLimitConfig, RateLimiter},
+            search_index::SearchIndex,
+        },
+        Moment, Result, SocialFeedError,
+    };
 
     // 模拟 Moment 创建
     fn create_test_moment(id: &str, text: &str, author: &str, likes: u64) -> Moment {
@@ -113,11 +118,7 @@ mod advanced_integration_tests {
         let updates = vec![(
             room_id.to_string(),
             "$event456".to_string(),
-            AggregationStats {
-                like_count: 10,
-                reply_count: 5,
-                forward_count: 2,
-            },
+            AggregationStats { like_count: 10, reply_count: 5, forward_count: 2 },
         )];
         cache.update_batch(updates).await;
 
@@ -130,11 +131,7 @@ mod advanced_integration_tests {
     fn test_forward_metadata_chain() {
         let moment = create_test_moment("$original", "Great insights!", "alice", 10);
 
-        let url = ForwardManager::build_event_url(
-            "example.com",
-            "!room:example.com",
-            "$original",
-        );
+        let url = ForwardManager::build_event_url("example.com", "!room:example.com", "$original");
 
         let metadata = ForwardMetadata::from_moment(
             &moment,
@@ -184,9 +181,7 @@ mod advanced_integration_tests {
         assert!(policy.can_retry(&config));
 
         // 模拟 homeserver 返回限制
-        limiter
-            .handle_rate_limit(OperationType::PostMoment, 5000)
-            .await;
+        limiter.handle_rate_limit(OperationType::PostMoment, 5000).await;
 
         let updated_policy = limiter.get_retry_policy(OperationType::PostMoment).await;
         assert_eq!(updated_policy.next_backoff_ms, 5000);
@@ -256,9 +251,7 @@ mod advanced_integration_tests {
     #[test]
     fn test_error_handling_granular() {
         // 测试各种细粒度错误
-        let err = SocialFeedError::RateLimited {
-            retry_after_ms: 5000,
-        };
+        let err = SocialFeedError::RateLimited { retry_after_ms: 5000 };
         assert!(err.to_string().contains("5000"));
 
         let err = SocialFeedError::InvalidJson("Invalid data".to_string());
@@ -275,16 +268,11 @@ mod advanced_integration_tests {
     #[test]
     fn test_paged_result_dual_direction() {
         let items = vec![1, 2, 3, 4, 5];
-        let result = PagedResult::from_vec_bidirectional(
-            items,
-            50,
-            5,
-            "sync_token".to_string(),
-            Some(100),
-        );
+        let result =
+            PagedResult::from_vec_bidirectional(items, 50, 5, "sync_token".to_string(), Some(100));
 
         assert_eq!(result.len(), 5);
-        assert!(result.can_paginate_forward());  // 50 + 5 < 100
+        assert!(result.can_paginate_forward()); // 50 + 5 < 100
         assert!(result.can_paginate_backward()); // 50 > 0
 
         // 验证令牌方向

@@ -49,5 +49,3 @@ pub struct UserProfile {
     /// 动态数
     pub moments_count: u64,
 }
-
-

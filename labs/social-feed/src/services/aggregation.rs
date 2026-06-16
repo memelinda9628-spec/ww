@@ -2,10 +2,11 @@
 //!
 //! 支持实时点赞和评论计数，使用 m.relates_to aggregation 关系。
 
-use crate::types::models::Moment;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
+
 use tokio::sync::RwLock;
-use std::sync::Arc;
+
+use crate::types::models::Moment;
 
 /// 聚合计数结果
 #[derive(Debug, Clone)]
@@ -21,16 +22,12 @@ pub struct AggregationStats {
 impl AggregationStats {
     /// 创建零计数的统计
     pub fn zero() -> Self {
-        Self {
-            like_count: 0,
-            reply_count: 0,
-            forward_count: 0,
-        }
+        Self { like_count: 0, reply_count: 0, forward_count: 0 }
     }
 }
 
 /// 事件聚合计数缓存
-/// 
+///
 /// 缓存事件的互动统计（点赞、评论、转发），支持增量更新。
 /// 设计用于监听 m.relates_to 关系事件并自动更新计数。
 #[derive(Debug)]
@@ -197,8 +194,16 @@ mod tests {
         let cache = AggregationCache::new();
 
         let updates = vec![
-            ("!room1:example.com".to_string(), "$event1".to_string(), AggregationStats { like_count: 5, reply_count: 2, forward_count: 1 }),
-            ("!room2:example.com".to_string(), "$event2".to_string(), AggregationStats { like_count: 10, reply_count: 3, forward_count: 0 }),
+            (
+                "!room1:example.com".to_string(),
+                "$event1".to_string(),
+                AggregationStats { like_count: 5, reply_count: 2, forward_count: 1 },
+            ),
+            (
+                "!room2:example.com".to_string(),
+                "$event2".to_string(),
+                AggregationStats { like_count: 10, reply_count: 3, forward_count: 0 },
+            ),
         ];
 
         cache.update_batch(updates).await;

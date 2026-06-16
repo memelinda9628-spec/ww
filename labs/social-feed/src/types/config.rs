@@ -3,6 +3,7 @@
 //! 提供社交动态模块的配置管理。
 
 use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 
 /// 社交动态模块配置
@@ -31,10 +32,10 @@ impl Config {
             feed_room_name_suffix: "的主页".to_string(),
             feed_room_topic_prefix: "feed:".to_string(),
             default_page_size: 20,
-            profile_cache_ttl_secs: 3600,  // 1 小时
+            profile_cache_ttl_secs: 3600, // 1 小时
             max_cache_entries: 1000,
             enable_image_extraction: true,
-            enable_comment_counting: false,  // 待实现
+            enable_comment_counting: false, // 待实现
         }
     }
 
@@ -78,9 +79,7 @@ pub struct ConfigBuilder {
 impl ConfigBuilder {
     /// 创建新的配置构建器
     pub fn new() -> Self {
-        Self {
-            config: Config::default_config(),
-        }
+        Self { config: Config::default_config() }
     }
 
     /// 设置 feed room 名称后缀
@@ -164,10 +163,7 @@ mod tests {
 
     #[test]
     fn test_config_builder() {
-        let config = ConfigBuilder::new()
-            .default_page_size(50)
-            .profile_cache_ttl(7200)
-            .build();
+        let config = ConfigBuilder::new().default_page_size(50).profile_cache_ttl(7200).build();
 
         assert_eq!(config.default_page_size, 50);
         assert_eq!(config.profile_cache_ttl_secs, 7200);

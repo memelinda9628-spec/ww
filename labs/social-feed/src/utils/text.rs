@@ -43,7 +43,7 @@ mod tests {
     #[test]
     fn test_truncate_text() {
         let text = "This is a long text";
-        assert_eq!(truncate_text(text, 10), "This is a ...");  // chars, not bytes
+        assert_eq!(truncate_text(text, 10), "This is a ..."); // chars, not bytes
         assert_eq!(truncate_text(text, 100), text);
         // 中文字符测试：4 个字符（每字符 3 bytes），截断到 2 char
         assert_eq!(truncate_text("你好世界", 2), "你好...");
