@@ -27,7 +27,7 @@ use matrix_sdk::STATE_STORE_DATABASE_NAME;
 #[cfg(not(target_family = "wasm"))]
 use matrix_sdk::media::MediaFileHandle as SdkMediaFileHandle;
 use matrix_sdk::{
-    Account, AuthApi, AuthSession, Client as MatrixClient, Error, SessionChange, SessionTokens,
+    AuthApi, AuthSession, Client as MatrixClient, Error, SessionChange, SessionTokens,
     authentication::oauth::{
         ClientId, OAuthAuthorizationData, OAuthError as SdkOAuthError, OAuthSession,
     },
