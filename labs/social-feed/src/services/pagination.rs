@@ -262,7 +262,6 @@ impl PaginationState {
     pub fn go_back(&mut self) -> Option<PaginationToken> {
         self.backward_history.pop().inspect(|token| {
             self.current_token = Some(token.clone());
-            token
         })
     }
 
