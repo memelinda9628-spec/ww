@@ -142,6 +142,11 @@ impl AggregationCache {
         self.stats.read().await.len()
     }
 
+    /// 检查缓存是否为空
+    pub async fn is_empty(&self) -> bool {
+        self.stats.read().await.is_empty()
+    }
+
     /// 应用聚合统计到 Moment
     pub async fn apply_stats(&self, moment: &mut Moment, room_id: &str) {
         let stats = self.get_stats(room_id, &moment.id).await;
