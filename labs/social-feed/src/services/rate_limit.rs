@@ -125,8 +125,8 @@ impl RetryPolicy {
         self.attempt += 1;
 
         // 指数退避：2^attempt * initial_backoff，加上随机抖动
-        let next_backoff = (config.initial_backoff_ms * (1u64 << self.attempt))
-            .min(config.max_backoff_ms);
+        let next_backoff =
+            (config.initial_backoff_ms * (1u64 << self.attempt)).min(config.max_backoff_ms);
 
         // 添加 ±10% 的随机抖动
         let jitter = (next_backoff as f64 * 0.1) as u64;
