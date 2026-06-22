@@ -9,6 +9,7 @@ on:
 
 jobs:
   benchmarks:
+    if: github.repository == 'matrix-org/matrix-rust-sdk'
     name: Run Benchmarks
     runs-on: ubuntu-latest
     permissions:

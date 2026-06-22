@@ -193,6 +193,7 @@ jobs:
         run: target/debug/xtask swift build-framework --target=aarch64-apple-ios --profile=dev --ios-deployment-target=18.0
 
   complement-crypto:
+    if: github.repository == 'matrix-org/matrix-rust-sdk'
     name: "Run Complement Crypto tests"
     uses: matrix-org/complement-crypto/.github/workflows/single_sdk_tests.yml@399a1deeab0d7e4fa9604cbe83b1df6058c40193 # main
     with:

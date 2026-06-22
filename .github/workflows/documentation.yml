@@ -16,6 +16,7 @@ permissions:
 
 jobs:
   docs:
+    if: github.repository == 'matrix-org/matrix-rust-sdk'
     name: All crates
     runs-on: ubuntu-latest
 
