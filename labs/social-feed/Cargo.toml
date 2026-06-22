@@ -2,6 +2,7 @@
 name = "social-feed"
 version = "0.1.0"
 edition = "2021"
+rust-version.workspace = true
 description = "动态流模块 - 基于 Matrix 协议的社交动态功能封装"
 
 [dependencies]
