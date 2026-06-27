@@ -995,17 +995,6 @@ mod tests {
         let mut bob_rx = bob_pc.take_signaling_receiver().unwrap();
         let bob = Arc::new(bob_pc);
 
-        // ---- SDP exchange ----
-
-        eprintln!("[DEBUG] Alice creating offer...");
-        let offer = alice.create_offer().await.unwrap();
-        eprintln!("[DEBUG] Bob set remote desc...");
-        bob.set_remote_description(offer).await.unwrap();
-        eprintln!("[DEBUG] Bob creating answer...");
-        let answer = bob.create_answer().await.unwrap();
-        eprintln!("[DEBUG] Alice set remote desc...");
-        alice.set_remote_description(answer).await.unwrap();
-
         // ---- ICE candidate relay (bi-directional) ----
 
         let alice_for_relay = alice.clone();
@@ -1036,6 +1025,16 @@ mod tests {
             }
         });
 
+        // ---- SDP exchange ----
+
+        eprintln!("[DEBUG] Alice creating offer...");
+        let offer = alice.create_offer().await.unwrap();
+        eprintln!("[DEBUG] Bob set remote desc...");
+        bob.set_remote_description(offer).await.unwrap();
+        eprintln!("[DEBUG] Bob creating answer...");
+        let answer = bob.create_answer().await.unwrap();
+        eprintln!("[DEBUG] Alice set remote desc...");
+        alice.set_remote_description(answer).await.unwrap();
         // ---- Wait for Connected ----
 
         eprintln!("[DEBUG] Starting ICE wait loop");
