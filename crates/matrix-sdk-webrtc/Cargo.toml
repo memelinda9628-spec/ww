@@ -1,0 +1,59 @@
+[package]
+name = "matrix-sdk-webrtc"
+description = "Pure Rust P2P WebRTC call engine for matrix-rust-sdk."
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/matrix-org/matrix-rust-sdk"
+license = "Apache-2.0"
+rust-version.workspace = true
+
+[features]
+default = []
+uniffi = ["dep:uniffi", "matrix-sdk/uniffi", "matrix-sdk-base/uniffi"]
+
+# Media capture backends (each implies `webrtc`).
+webrtc = ["dep:webrtc", "dep:uuid", "dep:bytes", "dep:rustls"]
+audio = ["webrtc", "dep:cpal", "dep:opus"]
+video = ["webrtc", "dep:nokhwa"]
+vp8 = ["video", "dep:vpx-rs"]
+
+[dependencies]
+matrix-sdk = { workspace = true }
+matrix-sdk-base = { workspace = true }
+matrix-sdk-common = { workspace = true }
+ruma = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true, features = ["attributes"] }
+tokio = { workspace = true }
+uniffi = { workspace = true, optional = true }
+
+webrtc = { version = "0.14", optional = true }
+cpal = { version = "0.15", optional = true }
+opus = { version = "0.3", optional = true }
+nokhwa = { version = "0.10", optional = true, features = ["input-native"] }
+uuid = { version = "1", optional = true, features = ["v4"] }
+bytes = { version = "1", optional = true }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"], optional = true }
+vpx-rs = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+tracing-subscriber = { workspace = true }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+
+[lints]
+workspace = true
+
+[[example]]
+name = "call_integration"
+required-features = ["webrtc"]
+
+[[example]]
+name = "two_party_call"
+required-features = ["webrtc"]
+
+[[example]]
+name = "two_party_media"
+required-features = ["webrtc"]
