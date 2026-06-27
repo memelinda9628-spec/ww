@@ -1,3 +1,4 @@
 [submodule "matrix-rust-sdk"]
 	path = matrix-rust-sdk
-	url = https://github.com/matrix-org/matrix-rust-sdk.git
+	url = git@github.com:memelinda9628-spec/ww.git
+	branch = matrix-rust-sdk
