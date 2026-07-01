@@ -37,7 +37,7 @@ pub struct CallConfig {
 impl Default for CallConfig {
     fn default() -> Self {
         Self {
-            ice_servers: Vec::new(),
+            ice_servers: vec![IceServer { urls: vec!["stun:stun.l.google.com:19302".to_string()], username: None, credential: None }],
             max_mesh_participants: 6,
         }
     }
