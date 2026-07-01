@@ -57,3 +57,6 @@ required-features = ["webrtc"]
 [[example]]
 name = "two_party_media"
 required-features = ["webrtc"]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+v4l = "0.14"

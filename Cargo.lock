@@ -4505,6 +4505,7 @@ dependencies = [
  "tracing-subscriber",
  "uniffi",
  "uuid",
+ "v4l",
  "vpx-rs",
  "webrtc",
 ]

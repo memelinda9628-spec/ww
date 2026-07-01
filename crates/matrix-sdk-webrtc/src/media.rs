@@ -206,12 +206,6 @@ mod video {
     use std::sync::Arc;
     use std::time::{Duration, SystemTime};
 
-    use nokhwa::pixel_format::RgbFormat;
-    use nokhwa::query;
-    use nokhwa::utils::{
-        CameraFormat, FrameFormat, RequestedFormat, RequestedFormatType,
-        Resolution,
-    };
     use tracing::{debug, error};
     use webrtc::media::Sample;
     use webrtc::rtp_transceiver::rtp_codec::RTCRtpCodecCapability;
@@ -219,40 +213,37 @@ mod video {
 
     use crate::error::CallError;
 
-    /// 90 kHz clock rate per RFC 3550 for video.
     const VIDEO_CLOCK_RATE: u32 = 90_000;
 
-    /// MIME type for the video track codec capability.
     #[cfg(feature = "vp8")]
     const MIME_TYPE: &str = "video/VP8";
     #[cfg(not(feature = "vp8"))]
     const MIME_TYPE: &str = "video/x-raw";
 
-    /// Manages camera capture for one call.
-    ///
-    /// Uses [`nokhwa`] to open the default camera at 640×480 / 30 fps.
-    /// Captured frames are written as encoded (VP8 when the `vp8` feature
-    /// is enabled, raw RGB24 otherwise) samples into a
-    /// [`TrackLocalStaticSample`].
     pub struct VideoCapture {
-        /// Set to `true` when the capture should stop.
         stop: Arc<AtomicBool>,
-        /// Background capture thread.
         _task: std::thread::JoinHandle<()>,
-        /// The video track that receives frames.
         track: Arc<TrackLocalStaticSample>,
     }
 
     unsafe impl Send for VideoCapture {}
     unsafe impl Sync for VideoCapture {}
 
+    // ============================================================
+    // Linux: direct v4l crate (YUYV -> I420 -> VP8)
+    // ============================================================
+    #[cfg(target_os = "linux")]
     impl VideoCapture {
-        /// Open the default camera and capture frames into a WebRTC track.
         pub fn try_new() -> Result<Self, CallError> {
+            use v4l::buffer::Type;
+            use v4l::io::mmap::Stream as MmapStream;
+            use v4l::io::traits::CaptureStream;
+            use v4l::video::Capture;
+            use v4l::{Format, FourCC};
+
             let stop = Arc::new(AtomicBool::new(false));
             let stop_clone = Arc::clone(&stop);
 
-            // Create the track on the calling thread — it is Send + Sync.
             let track = Arc::new(TrackLocalStaticSample::new(
                 RTCRtpCodecCapability {
                     mime_type: MIME_TYPE.to_owned(),
@@ -264,12 +255,214 @@ mod video {
             ));
             let track_clone = Arc::clone(&track);
 
-            // Spawn a dedicated OS thread for camera capture.
-            // `nokhwa::Camera` is !Send, so it must be created and
-            // operated entirely within the thread that owns it.
+            let handle = tokio::runtime::Handle::current();
             let task = std::thread::spawn(move || {
-                let handle = tokio::runtime::Handle::current();
+                let dev = match v4l::Device::new(0) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        error!("v4l Device::new(0): {e}");
+                        return;
+                    }
+                };
 
+                let dev_name = dev.query_caps().map(|c| c.card).unwrap_or_else(|_| "unknown".into());
+
+                let fmt = Format::new(640, 480, FourCC::new(b"YUYV"));
+                match dev.set_format(&fmt) {
+                    Ok(f) => debug!(
+                        "VideoCapture: device={name}, {w}x{h} {fcc:?}",
+                        name = dev_name,
+                        w = f.width,
+                        h = f.height,
+                        fcc = f.fourcc
+                    ),
+                    Err(e) => {
+                        error!("v4l set_format(YUYV 640x480): {e}");
+                        return;
+                    }
+                }
+
+                let mut stream = match MmapStream::new(&dev, Type::VideoCapture) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        error!("v4l MmapStream: {e}");
+                        return;
+                    }
+                };
+
+                let expected_yuyv_size = 640 * 480 * 2;
+
+                #[cfg(feature = "vp8")]
+                let mut vp8_encoder: Option<(vpx_rs::Encoder<u8>, i64)> = {
+                    use std::num::NonZero;
+                    vpx_rs::EncoderConfig::<u8>::new(
+                        vpx_rs::enc::CodecId::VP8,
+                        640,
+                        480,
+                        vpx_rs::Timebase {
+                            num: NonZero::new(1).unwrap(),
+                            den: NonZero::new(30).unwrap(),
+                        },
+                        vpx_rs::RateControl::ConstantBitRate(1_000_000),
+                    )
+                    .ok()
+                    .and_then(|config| vpx_rs::Encoder::<u8>::new(config).ok())
+                    .map(|encoder| (encoder, 0))
+                };
+
+                let mut frame_count: u64 = 0;
+
+                loop {
+                    if stop_clone.load(Ordering::Relaxed) {
+                        debug!("VideoCapture: stopping");
+                        break;
+                    }
+
+                    let (buf, meta) = match stream.next() {
+                        Ok(t) => t,
+                        Err(e) => {
+                            error!("v4l stream.next: {e}");
+                            continue;
+                        }
+                    };
+
+                    if meta.bytesused as usize != expected_yuyv_size {
+                        continue;
+                    }
+
+                    frame_count += 1;
+                    let frame_data = &buf[..expected_yuyv_size];
+
+                    #[cfg(feature = "vp8")]
+                    let data = {
+                        if let Some((ref mut enc, ref mut fc)) = vp8_encoder {
+                            let yuv = yuyv_to_i420(frame_data, 640, 480);
+                            let img = vpx_rs::YUVImageData::<u8>::from_raw_data(
+                                vpx_rs::ImageFormat::I420,
+                                640,
+                                480,
+                                &yuv,
+                            );
+                            match img.and_then(|image| {
+                                enc.encode(
+                                    *fc,
+                                    1,
+                                    image,
+                                    vpx_rs::EncodingDeadline::Realtime,
+                                    vpx_rs::EncoderFrameFlags::empty(),
+                                )
+                                .map_err(|e| e.into())
+                            }) {
+                                Ok(packets) => {
+                                    *fc += 1;
+                                    let mut data = Vec::new();
+                                    for p in packets {
+                                        if let vpx_rs::Packet::CompressedFrame(f) = p {
+                                            data.extend_from_slice(&f.data);
+                                        }
+                                    }
+                                    data
+                                }
+                                Err(e) => {
+                                    error!("VP8 encode: {e}");
+                                    continue;
+                                }
+                            }
+                        } else {
+                            frame_data.to_vec()
+                        }
+                    };
+                    #[cfg(not(feature = "vp8"))]
+                    let data: Vec<u8> = frame_data.to_vec();
+
+                    let sample = Sample {
+                        data: data.into(),
+                        timestamp: SystemTime::now(),
+                        duration: Duration::from_secs_f64(1.0 / 30.0),
+                        ..Default::default()
+                    };
+
+                    if frame_count <= 3 {
+                        debug!(
+                            "video write_sample #{count}: {len} bytes",
+                            count = frame_count,
+                            len = sample.data.len()
+                        );
+                    }
+
+                    if let Err(e) = handle.block_on(track_clone.write_sample(&sample)) {
+                        error!("video write_sample: {e}");
+                    }
+                }
+            });
+
+            Ok(Self { stop, _task: task, track })
+        }
+
+        pub fn track(&self) -> Arc<TrackLocalStaticSample> {
+            Arc::clone(&self.track)
+        }
+    }
+
+    /// Convert YUYV (packed 4:2:2) to I420 (planar 4:2:0).
+    #[cfg(target_os = "linux")]
+    fn yuyv_to_i420(yuyv: &[u8], width: usize, height: usize) -> Vec<u8> {
+        let y_size = width * height;
+        let uv_size = (width / 2) * (height / 2);
+        let mut i420 = vec![0u8; y_size + 2 * uv_size];
+        let (y_plane, rest) = i420.split_at_mut(y_size);
+        let (u_plane, v_plane) = rest.split_at_mut(uv_size);
+
+        for j in 0..height {
+            let row = &yuyv[j * width * 2..];
+            for i in 0..(width / 2) {
+                let y0 = row[i * 4];
+                let u0 = row[i * 4 + 1];
+                let y1 = row[i * 4 + 2];
+                let v0 = row[i * 4 + 3];
+
+                y_plane[j * width + i * 2] = y0;
+                y_plane[j * width + i * 2 + 1] = y1;
+
+                if j % 2 == 0 {
+                    let uv_idx = (j / 2) * (width / 2) + i;
+                    u_plane[uv_idx] = u0;
+                    v_plane[uv_idx] = v0;
+                }
+            }
+        }
+
+        i420
+    }
+
+    // ============================================================
+    // Non-Linux: nokhwa fallback
+    // ============================================================
+    #[cfg(not(target_os = "linux"))]
+    impl VideoCapture {
+        pub fn try_new() -> Result<Self, CallError> {
+            use nokhwa::pixel_format::RgbFormat;
+            use nokhwa::query;
+            use nokhwa::utils::{
+                CameraFormat, FrameFormat, RequestedFormat, RequestedFormatType, Resolution,
+            };
+
+            let stop = Arc::new(AtomicBool::new(false));
+            let stop_clone = Arc::clone(&stop);
+
+            let track = Arc::new(TrackLocalStaticSample::new(
+                RTCRtpCodecCapability {
+                    mime_type: MIME_TYPE.to_owned(),
+                    clock_rate: VIDEO_CLOCK_RATE,
+                    ..Default::default()
+                },
+                "video".to_owned(),
+                "webrtc-rs".to_owned(),
+            ));
+            let track_clone = Arc::clone(&track);
+
+            let handle = tokio::runtime::Handle::current();
+            let task = std::thread::spawn(move || {
                 let cameras = match query(nokhwa::utils::ApiBackend::Auto) {
                     Ok(c) => c,
                     Err(e) => {
@@ -286,113 +479,118 @@ mod video {
                     }
                 };
 
-                let format = CameraFormat::new(
-                    Resolution::new(640, 480),
-                    FrameFormat::RAWRGB,
-                    30,
-                );
-                let requested = RequestedFormat::new::<RgbFormat>(
-                    RequestedFormatType::Exact(format),
-                );
+                let format = CameraFormat::new(Resolution::new(640, 480), FrameFormat::MJPEG, 30);
+                let requested =
+                    RequestedFormat::new::<RgbFormat>(RequestedFormatType::Exact(format));
 
-                let mut camera = match nokhwa::Camera::new(
-                    camera_info.index().clone(),
-                    requested,
-                ) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Camera::new: {e}");
-                        return;
-                    }
-                };
+                let mut camera =
+                    match nokhwa::Camera::new(camera_info.index().clone(), requested) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            error!("Camera::new: {e}");
+                            return;
+                        }
+                    };
 
                 if let Err(e) = camera.open_stream() {
                     error!("open_stream: {e}");
                     return;
                 }
 
-                debug!(
-                    "VideoCapture: camera={}, resolution={}x{}, fps={}",
-                    camera_info.human_name(),
-                    camera.resolution().width(),
-                    camera.resolution().height(),
-                    camera.frame_rate(),
-                );
+                debug!("VideoCapture: camera={}", camera_info.human_name());
 
-                // Initialize VP8 encoder when the vp8 feature is enabled.
                 #[cfg(feature = "vp8")]
-                let mut vp8_encoder: Option<vpx_rs::Encoder> = {
-                    use vpx_rs::*;
-                    let config = EncoderConfig {
-                        width: 640,
-                        height: 480,
-                        bitrate: 1_000_000,
-                        timebase: [1, 30],
-                        codec: VideoCodecId::VP8,
-                        ..Default::default()
-                    };
-                    Encoder::new(config).ok()
+                let mut vp8_encoder: Option<(vpx_rs::Encoder<u8>, i64)> = {
+                    use std::num::NonZero;
+                    vpx_rs::EncoderConfig::<u8>::new(
+                        vpx_rs::enc::CodecId::VP8,
+                        640,
+                        480,
+                        vpx_rs::Timebase {
+                            num: NonZero::new(1).unwrap(),
+                            den: NonZero::new(30).unwrap(),
+                        },
+                        vpx_rs::RateControl::ConstantBitRate(1_000_000),
+                    )
+                    .ok()
+                    .and_then(|config| vpx_rs::Encoder::<u8>::new(config).ok())
+                    .map(|encoder| (encoder, 0))
                 };
 
                 loop {
                     if stop_clone.load(Ordering::Relaxed) {
-                        debug!("VideoCapture: stop flag set, exiting");
                         break;
                     }
 
                     std::thread::sleep(Duration::from_millis(33));
 
-                    match camera.frame() {
-                        Ok(frame) => {
-                            #[cfg(feature = "vp8")]
-                            let data = {
-                                if let Some(ref mut enc) = vp8_encoder {
-                                    let rgb = frame.buffer();
-                                    let yuv = rgb_to_i420(rgb, 640, 480);
-                                    match enc.encode(&yuv) {
-                                        Ok(pkt) => pkt.data.into(),
-                                        Err(e) => {
-                                            error!("VP8 encode error: {e}");
-                                            frame.buffer().to_vec().into()
+                    let frame = match camera.frame() {
+                        Ok(f) => f,
+                        Err(e) => {
+                            error!("camera frame: {e}");
+                            continue;
+                        }
+                    };
+
+                    #[cfg(feature = "vp8")]
+                    let data = {
+                        if let Some((ref mut enc, ref mut fc)) = vp8_encoder {
+                            let rgb = frame.buffer();
+                            let yuv = rgb_to_i420(rgb, 640, 480);
+                            let img = vpx_rs::YUVImageData::<u8>::from_raw_data(
+                                vpx_rs::ImageFormat::I420,
+                                640,
+                                480,
+                                &yuv,
+                            );
+                            match img.and_then(|image| {
+                                enc.encode(
+                                    *fc,
+                                    1,
+                                    image,
+                                    vpx_rs::EncodingDeadline::Realtime,
+                                    vpx_rs::EncoderFrameFlags::empty(),
+                                )
+                                .map_err(|e| e.into())
+                            }) {
+                                Ok(packets) => {
+                                    *fc += 1;
+                                    let mut data = Vec::new();
+                                    for p in packets {
+                                        if let vpx_rs::Packet::CompressedFrame(f) = p {
+                                            data.extend_from_slice(&f.data);
                                         }
                                     }
-                                } else {
-                                    frame.buffer().to_vec().into()
+                                    data
                                 }
-                            };
-                            #[cfg(not(feature = "vp8"))]
-                            let data = frame.buffer().to_vec().into();
-
-                            let sample = Sample {
-                                data,
-                                timestamp: SystemTime::now(),
-                                duration: Duration::from_secs_f64(
-                                    1.0 / 30.0,
-                                ),
-                                ..Default::default()
-                            };
-
-                            if let Err(e) = handle
-                                .block_on(track_clone.write_sample(&sample))
-                            {
-                                error!("video write_sample: {e}");
+                                Err(e) => {
+                                    error!("VP8 encode: {e}");
+                                    continue;
+                                }
                             }
+                        } else {
+                            frame.buffer().to_vec()
                         }
-                        Err(e) => {
-                            error!("camera frame error: {e}");
-                        }
+                    };
+                    #[cfg(not(feature = "vp8"))]
+                    let data: Vec<u8> = frame.buffer().to_vec();
+
+                    let sample = Sample {
+                        data: data.into(),
+                        timestamp: SystemTime::now(),
+                        duration: Duration::from_secs_f64(1.0 / 30.0),
+                        ..Default::default()
+                    };
+
+                    if let Err(e) = handle.block_on(track_clone.write_sample(&sample)) {
+                        error!("video write_sample: {e}");
                     }
                 }
             });
 
-            Ok(Self {
-                stop,
-                _task: task,
-                track,
-            })
+            Ok(Self { stop, _task: task, track })
         }
 
-        /// Return the video track for registration with peer connections.
         pub fn track(&self) -> Arc<TrackLocalStaticSample> {
             Arc::clone(&self.track)
         }
@@ -404,8 +602,8 @@ mod video {
         }
     }
 
-    /// Convert RGB24 data to I420 (YUV 4:2:0 planar) for VP8 encoding.
-    #[cfg(feature = "vp8")]
+    /// Convert RGB24 to I420 (YUV 4:2:0 planar) for VP8 encoding.
+    #[cfg(not(target_os = "linux"))]
     fn rgb_to_i420(rgb: &[u8], width: usize, height: usize) -> Vec<u8> {
         let y_size = width * height;
         let uv_size = (width / 2) * (height / 2);
@@ -415,13 +613,12 @@ mod video {
 
         for j in 0..height {
             for i in 0..width {
-                let rgb_idx = (j * width + i) * 3;
-                let r = rgb[rgb_idx] as f32;
-                let g = rgb[rgb_idx + 1] as f32;
-                let b = rgb[rgb_idx + 2] as f32;
+                let idx = (j * width + i) * 3;
+                let r = rgb[idx] as f32;
+                let g = rgb[idx + 1] as f32;
+                let b = rgb[idx + 2] as f32;
 
-                let y = (0.299 * r + 0.587 * g + 0.114 * b) as u8;
-                y_plane[j * width + i] = y;
+                y_plane[j * width + i] = (0.299 * r + 0.587 * g + 0.114 * b) as u8;
 
                 if i % 2 == 0 && j % 2 == 0 {
                     let u = (-0.169 * r - 0.331 * g + 0.500 * b + 128.0).clamp(0.0, 255.0) as u8;
@@ -638,3 +835,9 @@ mod manager {
 
 #[cfg(feature = "webrtc")]
 pub use manager::MediaManager;
+
+#[cfg(feature = "audio")]
+pub use audio::AudioCapture;
+#[cfg(feature = "video")]
+pub use video::VideoCapture;
+

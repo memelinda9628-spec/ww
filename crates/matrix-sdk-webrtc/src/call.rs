@@ -792,6 +792,9 @@ mod tests {
         }
 
         relay.abort();
+
+        // Give RTP packets time to flow after ICE/DTLS completes
+        tokio::time::sleep(Duration::from_millis(500)).await;
     }
 
     // ---------------------------------------------------------------
@@ -898,6 +901,9 @@ mod tests {
 
         relay.abort();
 
+        // Give RTP packets time to flow after ICE/DTLS completes
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
         assert_eq!(
             alice.connection_state(),
             PeerConnectionState::Connected,
@@ -923,6 +929,7 @@ mod tests {
         use webrtc::rtp_transceiver::rtp_codec::RTCRtpCodecCapability;
         use webrtc::track::track_local::TrackLocal;
         use webrtc::track::track_local::track_local_static_sample::TrackLocalStaticSample;
+        use webrtc::media::Sample;
         use crate::media::MediaManager;
 
         ensure_crypto_provider();
@@ -930,7 +937,7 @@ mod tests {
 
         // ---- Mock external tracks (no real devices) ----
 
-        let audio_track: Arc<dyn TrackLocal + Send + Sync> = Arc::new(
+        let audio_sample_track = Arc::new(
             TrackLocalStaticSample::new(
                 RTCRtpCodecCapability {
                     mime_type: "audio/opus".to_owned(),
@@ -942,8 +949,9 @@ mod tests {
                 "test-audio".to_owned(),
             ),
         );
+        let audio_track: Arc<dyn TrackLocal + Send + Sync> = audio_sample_track.clone();
 
-        let video_track: Arc<dyn TrackLocal + Send + Sync> = Arc::new(
+        let video_sample_track = Arc::new(
             TrackLocalStaticSample::new(
                 RTCRtpCodecCapability {
                     mime_type: "video/VP8".to_owned(),
@@ -954,6 +962,7 @@ mod tests {
                 "test-video".to_owned(),
             ),
         );
+        let video_track: Arc<dyn TrackLocal + Send + Sync> = video_sample_track.clone();
 
         let mut alice_media = MediaManager::new();
         alice_media.set_audio_track(audio_track);
@@ -963,7 +972,6 @@ mod tests {
 
         let alice_pc = PeerConnection::new(&config).await.unwrap();
         alice_pc.create_data_channel("loopback").await.unwrap();
-        eprintln!("[DEBUG] Alice tracks added...");
         alice_media
             .add_tracks_to_connection(&alice_pc)
             .await
@@ -1027,17 +1035,36 @@ mod tests {
 
         // ---- SDP exchange ----
 
-        eprintln!("[DEBUG] Alice creating offer...");
         let offer = alice.create_offer().await.unwrap();
-        eprintln!("[DEBUG] Bob set remote desc...");
         bob.set_remote_description(offer).await.unwrap();
-        eprintln!("[DEBUG] Bob creating answer...");
         let answer = bob.create_answer().await.unwrap();
-        eprintln!("[DEBUG] Alice set remote desc...");
         alice.set_remote_description(answer).await.unwrap();
+
+        // After negotiation, bind() has been called, so the packetizer is ready.
+        // Continuously write samples so RTP packets flow to Bob.
+        let writer_audio = audio_sample_track.clone();
+        let writer_video = video_sample_track.clone();
+        let _writer = tokio::spawn(async move {
+            loop {
+                let ts = std::time::SystemTime::now();
+                let _ = writer_audio.write_sample(&Sample {
+                    data: bytes::Bytes::from(vec![0u8; 960]),
+                    duration: Duration::from_millis(20),
+                    timestamp: ts,
+                    ..Default::default()
+                }).await;
+                let _ = writer_video.write_sample(&Sample {
+                    data: bytes::Bytes::from(vec![0u8; 100]),
+                    duration: Duration::from_millis(33),
+                    timestamp: ts,
+                    ..Default::default()
+                }).await;
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        });
+
         // ---- Wait for Connected ----
 
-        eprintln!("[DEBUG] Starting ICE wait loop");
         let deadline =
             tokio::time::Instant::now() + Duration::from_secs(15);
 
@@ -1054,15 +1081,17 @@ mod tests {
             if tokio::time::Instant::now() > deadline {
                 relay.abort();
                 panic!(
-                    "ICE negotiation timed out after 15s:                      alice={alice_state:?} bob={bob_state:?}"
+                    "ICE negotiation timed out after 15s: alice={alice_state:?} bob={bob_state:?}"
                 );
             }
 
-            eprintln!("[DEBUG] ICE: alice={alice_state:?} bob={bob_state:?}");
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
 
         relay.abort();
+
+        // Give RTP packets time to flow after ICE/DTLS completes
+        tokio::time::sleep(Duration::from_millis(500)).await;
 
         // ---- Verify connection state ----
 
@@ -1087,6 +1116,218 @@ mod tests {
         assert!(
             !received.is_empty(),
             "Bob should have received at least one remote track"
+        );
+
+        let audio_count = received
+            .iter()
+            .filter(|s| s.starts_with("audio"))
+            .count();
+        let video_count = received
+            .iter()
+            .filter(|s| s.starts_with("video"))
+            .count();
+
+        assert!(
+            audio_count >= 1,
+            "Expected at least 1 audio track, got {} (received: {:?})",
+            audio_count,
+            received
+        );
+        assert!(
+            video_count >= 1,
+            "Expected at least 1 video track, got {} (received: {:?})",
+            video_count,
+            received
+        );
+    }
+
+
+    // ---------------------------------------------------------------
+    // Test: real device loopback
+    // ---------------------------------------------------------------
+
+    /// Opens the real microphone and camera (when available), injects
+    /// their tracks via [`MediaManager`], runs a full SDP+ICE exchange
+    /// between two [`PeerConnection`]s, and verifies that the remote
+    /// side receives the tracks through the `on_track` callback.
+    ///
+    /// Requires features: `video`, `audio`, `vp8`.
+    /// Skipped when no camera or microphone is available.
+    #[cfg(all(feature = "video", feature = "audio", feature = "vp8"))]
+    #[tokio::test]
+    async fn real_device_loopback() {
+        use crate::media::{AudioCapture, VideoCapture};
+        use crate::media::MediaManager;
+        use std::sync::Arc;
+
+        let _ = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .try_init();
+
+        ensure_crypto_provider();
+        let config = CallConfig::default();
+
+        // ---- Open real devices ----
+
+        let audio_cap = AudioCapture::try_new();
+        let video_cap = VideoCapture::try_new();
+
+        if audio_cap.is_err() || video_cap.is_err() {
+            eprintln!(
+                "Skipping real_device_loopback: audio={:?}, video={:?}",
+                audio_cap.as_ref().err(),
+                video_cap.as_ref().err(),
+            );
+            return; // Not a failure — device may not be available in CI
+        }
+
+        let audio_cap = audio_cap.unwrap();
+        let video_cap = video_cap.unwrap();
+
+        let audio_track: Arc<dyn webrtc::track::track_local::TrackLocal + Send + Sync> =
+            audio_cap.track();
+        let video_track: Arc<dyn webrtc::track::track_local::TrackLocal + Send + Sync> =
+            video_cap.track();
+
+        let mut alice_media = MediaManager::new();
+        alice_media.set_audio_track(audio_track);
+        alice_media.set_video_track(video_track);
+
+        // ---- Alice creates PC with media tracks ----
+
+        let alice_pc = PeerConnection::new(&config).await.unwrap();
+        alice_pc.create_data_channel("real-loopback").await.unwrap();
+        alice_media
+            .add_tracks_to_connection(&alice_pc)
+            .await
+            .unwrap();
+
+        let mut alice_rx = alice_pc.take_signaling_receiver().unwrap();
+        let alice = Arc::new(alice_pc);
+
+        // ---- Bob creates PC with on_track callback ----
+
+        let bob_pc = PeerConnection::new(&config).await.unwrap();
+        bob_pc.create_data_channel("real-loopback").await.unwrap();
+        let (track_tx, mut track_rx) =
+            tokio::sync::mpsc::channel::<String>(8);
+
+        bob_pc.on_track(move |track, _receiver| {
+            let tx = track_tx.clone();
+            async move {
+                let _ = tx
+                    .send(format!(
+                        "{}:{}",
+                        track.kind(),
+                        track.stream_id()
+                    ))
+                    .await;
+            }
+        });
+
+        let mut bob_rx = bob_pc.take_signaling_receiver().unwrap();
+        let bob = Arc::new(bob_pc);
+
+        // ---- ICE candidate relay ----
+
+        let alice_for_relay = alice.clone();
+        let bob_for_relay = bob.clone();
+
+        let relay = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    maybe_msg = alice_rx.recv() => {
+                        match maybe_msg {
+                            Some(SignalingMessage::IceCandidate(c)) => {
+                                let _ = bob_for_relay.add_ice_candidate(c).await;
+                            }
+                            None => break,
+                            _ => {}
+                        }
+                    }
+                    maybe_msg = bob_rx.recv() => {
+                        match maybe_msg {
+                            Some(SignalingMessage::IceCandidate(c)) => {
+                                let _ = alice_for_relay.add_ice_candidate(c).await;
+                            }
+                            None => break,
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        });
+
+        // ---- SDP exchange ----
+
+        let offer = alice.create_offer().await.unwrap();
+        bob.set_remote_description(offer).await.unwrap();
+        let answer = bob.create_answer().await.unwrap();
+        alice.set_remote_description(answer).await.unwrap();
+
+        // ---- Wait for Connected ----
+
+        let deadline =
+            tokio::time::Instant::now() + Duration::from_secs(30);
+
+        loop {
+            let alice_state = alice.connection_state();
+            let bob_state = bob.connection_state();
+
+            if alice_state == PeerConnectionState::Connected
+                && bob_state == PeerConnectionState::Connected
+            {
+                break;
+            }
+
+            if tokio::time::Instant::now() > deadline {
+                relay.abort();
+                panic!(
+                    "ICE negotiation timed out after 30s: alice={alice_state:?} bob={bob_state:?}"
+                );
+            }
+
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
+        relay.abort();
+
+        // ---- Verify connection state ----
+
+        assert_eq!(
+            alice.connection_state(),
+            PeerConnectionState::Connected,
+            "Alice should be Connected"
+        );
+        assert_eq!(
+            bob.connection_state(),
+            PeerConnectionState::Connected,
+            "Bob should be Connected"
+        );
+
+        // ---- Verify remote tracks received ----
+        // Real cameras may take longer to produce the first frame,
+        // so poll with a timeout instead of a single sleep+try_recv.
+
+        let mut received = Vec::new();
+
+        for _ in 0..150 {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            while let Ok(kind) = track_rx.try_recv() {
+                received.push(kind);
+            }
+            // Once we have audio+video we're done
+            let has_audio = received.iter().any(|s| s.starts_with("audio"));
+            let has_video = received.iter().any(|s| s.starts_with("video"));
+            if has_audio && has_video {
+                break;
+            }
+        }
+
+        assert!(
+            !received.is_empty(),
+            "Bob should have received at least one remote track, got: {:?}",
+            received
         );
 
         let audio_count = received
