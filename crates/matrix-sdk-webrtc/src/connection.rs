@@ -366,6 +366,16 @@ mod inner {
             Ok(())
         }
 
+
+        /// Close the peer connection.
+        ///
+        /// This is a graceful shutdown that sends a hangup signal to the
+        /// remote peer and releases all associated resources.
+        pub async fn close(&self) -> Result<(), CallError> {
+            self.pc.close().await.map_err(
+                |e| CallError::Media(format!("failed to close: {e}")),
+            )
+        }
         /// Register a callback that is invoked when a remote media track
         /// arrives.
         ///

@@ -1353,4 +1353,345 @@ mod tests {
         );
     }
 
+    // ---------------------------------------------------------------
+    // Test: multi-party loopback (3-party star topology)
+    // ---------------------------------------------------------------
+
+    /// Creates three [`PeerConnection`]s (A, B, C) with A connected to
+    /// both B and C in a star topology.  A injects external audio and
+    /// video tracks.  Verifies that both B and C receive the same tracks
+    /// from A with correct track counts.
+    #[cfg(all(feature = "video", feature = "audio", feature = "vp8"))]
+    #[tokio::test]
+    async fn multi_party_loopback() {
+        use webrtc::rtp_transceiver::rtp_codec::RTCRtpCodecCapability;
+        use webrtc::track::track_local::TrackLocal;
+        use webrtc::track::track_local::track_local_static_sample::TrackLocalStaticSample;
+        use webrtc::media::Sample;
+        use crate::media::MediaManager;
+
+        ensure_crypto_provider();
+        let config = CallConfig::default();
+
+        // ---- Mock external tracks on A (no real devices) ----
+
+        let audio_sample_track = Arc::new(
+            TrackLocalStaticSample::new(
+                RTCRtpCodecCapability {
+                    mime_type: "audio/opus".to_owned(),
+                    clock_rate: 48000,
+                    channels: 2,
+                    ..Default::default()
+                },
+                "audio".to_owned(),
+                "test-audio".to_owned(),
+            ),
+        );
+        let audio_track: Arc<dyn TrackLocal + Send + Sync> = audio_sample_track.clone();
+
+        let video_sample_track = Arc::new(
+            TrackLocalStaticSample::new(
+                RTCRtpCodecCapability {
+                    mime_type: "video/VP8".to_owned(),
+                    clock_rate: 90000,
+                    ..Default::default()
+                },
+                "video".to_owned(),
+                "test-video".to_owned(),
+            ),
+        );
+        let video_track: Arc<dyn TrackLocal + Send + Sync> = video_sample_track.clone();
+
+        let mut a_media = MediaManager::new();
+        a_media.set_audio_track(audio_track);
+        a_media.set_video_track(video_track);
+
+        // ---- A creates two PCs (A→B and A→C) ----
+
+        let a_to_b_pc = PeerConnection::new(&config).await.unwrap();
+        a_to_b_pc.create_data_channel("ab-data").await.unwrap();
+        a_media.add_tracks_to_connection(&a_to_b_pc).await.unwrap();
+
+        let a_to_c_pc = PeerConnection::new(&config).await.unwrap();
+        a_to_c_pc.create_data_channel("ac-data").await.unwrap();
+        a_media.add_tracks_to_connection(&a_to_c_pc).await.unwrap();
+
+        let mut ab_signaling = a_to_b_pc.take_signaling_receiver().unwrap();
+        let mut ac_signaling = a_to_c_pc.take_signaling_receiver().unwrap();
+        let a_to_b = Arc::new(a_to_b_pc);
+        let a_to_c = Arc::new(a_to_c_pc);
+
+        // ---- B creates PC with on_track callback ----
+
+        let b_pc = PeerConnection::new(&config).await.unwrap();
+        b_pc.create_data_channel("ab-data").await.unwrap();
+        let (b_track_tx, mut b_track_rx) =
+            tokio::sync::mpsc::channel::<String>(8);
+
+        b_pc.on_track({
+            let tx = b_track_tx.clone();
+            move |track, _receiver| {
+                let tx = tx.clone();
+                async move {
+                    let _ = tx
+                        .send(format!("{}:{}", track.kind(), track.stream_id()))
+                        .await;
+                }
+            }
+        });
+
+        let mut b_signaling = b_pc.take_signaling_receiver().unwrap();
+        let b = Arc::new(b_pc);
+
+        // ---- C creates PC with on_track callback ----
+
+        let c_pc = PeerConnection::new(&config).await.unwrap();
+        c_pc.create_data_channel("ac-data").await.unwrap();
+        let (c_track_tx, mut c_track_rx) =
+            tokio::sync::mpsc::channel::<String>(8);
+
+        c_pc.on_track({
+            let tx = c_track_tx.clone();
+            move |track, _receiver| {
+                let tx = tx.clone();
+                async move {
+                    let _ = tx
+                        .send(format!("{}:{}", track.kind(), track.stream_id()))
+                        .await;
+                }
+            }
+        });
+
+        let mut c_signaling = c_pc.take_signaling_receiver().unwrap();
+        let c = Arc::new(c_pc);
+
+        // ---- ICE candidate relay (star: A↔B + A↔C) ----
+
+        let a_to_b_relay = a_to_b.clone();
+        let a_to_c_relay = a_to_c.clone();
+        let b_relay = b.clone();
+        let c_relay = c.clone();
+
+        let relay = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    // A→B ICE
+                    maybe_msg = ab_signaling.recv() => {
+                        match maybe_msg {
+                            Some(SignalingMessage::IceCandidate(cand)) => {
+                                let _ = b_relay.add_ice_candidate(cand).await;
+                            }
+                            None => break,
+                            _ => {}
+                        }
+                    }
+                    // A→C ICE
+                    maybe_msg = ac_signaling.recv() => {
+                        match maybe_msg {
+                            Some(SignalingMessage::IceCandidate(cand)) => {
+                                let _ = c_relay.add_ice_candidate(cand).await;
+                            }
+                            None => break,
+                            _ => {}
+                        }
+                    }
+                    // B→A ICE
+                    maybe_msg = b_signaling.recv() => {
+                        match maybe_msg {
+                            Some(SignalingMessage::IceCandidate(cand)) => {
+                                let _ = a_to_b_relay.add_ice_candidate(cand).await;
+                            }
+                            None => break,
+                            _ => {}
+                        }
+                    }
+                    // C→A ICE
+                    maybe_msg = c_signaling.recv() => {
+                        match maybe_msg {
+                            Some(SignalingMessage::IceCandidate(cand)) => {
+                                let _ = a_to_c_relay.add_ice_candidate(cand).await;
+                            }
+                            None => break,
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        });
+
+        // ---- SDP exchange: A→B and A→C ----
+
+        // A→B
+        let offer_ab = a_to_b.create_offer().await.unwrap();
+        b.set_remote_description(offer_ab).await.unwrap();
+        let answer_b = b.create_answer().await.unwrap();
+        a_to_b.set_remote_description(answer_b).await.unwrap();
+
+        // A→C
+        let offer_ac = a_to_c.create_offer().await.unwrap();
+        c.set_remote_description(offer_ac).await.unwrap();
+        let answer_c = c.create_answer().await.unwrap();
+        a_to_c.set_remote_description(answer_c).await.unwrap();
+
+        // ---- Continuously write samples from A ----
+
+        let writer_audio = audio_sample_track.clone();
+        let writer_video = video_sample_track.clone();
+        let _writer = tokio::spawn(async move {
+            loop {
+                let ts = std::time::SystemTime::now();
+                let _ = writer_audio.write_sample(&Sample {
+                    data: bytes::Bytes::from(vec![0u8; 960]),
+                    duration: Duration::from_millis(20),
+                    timestamp: ts,
+                    ..Default::default()
+                }).await;
+                let _ = writer_video.write_sample(&Sample {
+                    data: bytes::Bytes::from(vec![0u8; 100]),
+                    duration: Duration::from_millis(33),
+                    timestamp: ts,
+                    ..Default::default()
+                }).await;
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        });
+
+        // ---- Wait for all connections to reach Connected ----
+        // We wait for A↔B and A↔C both connected.
+        {
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+            loop {
+                let ab_state = a_to_b.connection_state();
+                let b_state = b.connection_state();
+                let ac_state = a_to_c.connection_state();
+                let c_state = c.connection_state();
+
+                let ab_ok = ab_state == PeerConnectionState::Connected
+                    && b_state == PeerConnectionState::Connected;
+                let ac_ok = ac_state == PeerConnectionState::Connected
+                    && c_state == PeerConnectionState::Connected;
+
+                if ab_ok && ac_ok {
+                    break;
+                }
+
+                if tokio::time::Instant::now() > deadline {
+                    relay.abort();
+                    panic!(
+                        "ICE negotiation timed out after 20s: \
+                         A→B: a={ab_state:?} b={b_state:?}, \
+                         A→C: a={ac_state:?} c={c_state:?}"
+                    );
+                }
+
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        }
+
+        relay.abort();
+
+        // Give RTP packets time to flow after ICE/DTLS completes
+        tokio::time::sleep(Duration::from_millis(800)).await;
+
+        // ---- Verify connection states ----
+
+        assert_eq!(
+            a_to_b.connection_state(),
+            PeerConnectionState::Connected,
+            "A→B should be Connected"
+        );
+        assert_eq!(
+            b.connection_state(),
+            PeerConnectionState::Connected,
+            "B should be Connected"
+        );
+        assert_eq!(
+            a_to_c.connection_state(),
+            PeerConnectionState::Connected,
+            "A→C should be Connected"
+        );
+        assert_eq!(
+            c.connection_state(),
+            PeerConnectionState::Connected,
+            "C should be Connected"
+        );
+
+        // ---- Verify B received tracks from A ----
+
+        let mut b_received = Vec::new();
+        while let Ok(kind) = b_track_rx.try_recv() {
+            b_received.push(kind);
+        }
+        assert!(
+            !b_received.is_empty(),
+            "B should have received at least one remote track"
+        );
+        let b_audio = b_received.iter().filter(|s| s.starts_with("audio")).count();
+        let b_video = b_received.iter().filter(|s| s.starts_with("video")).count();
+        assert!(
+            b_audio >= 1,
+            "B expected >=1 audio track, got {} (received: {:?})",
+            b_audio, b_received
+        );
+        assert!(
+            b_video >= 1,
+            "B expected >=1 video track, got {} (received: {:?})",
+            b_video, b_received
+        );
+
+        // ---- Verify C received tracks from A ----
+
+        let mut c_received = Vec::new();
+        while let Ok(kind) = c_track_rx.try_recv() {
+            c_received.push(kind);
+        }
+        assert!(
+            !c_received.is_empty(),
+            "C should have received at least one remote track"
+        );
+        let c_audio = c_received.iter().filter(|s| s.starts_with("audio")).count();
+        let c_video = c_received.iter().filter(|s| s.starts_with("video")).count();
+        assert!(
+            c_audio >= 1,
+            "C expected >=1 audio track, got {} (received: {:?})",
+            c_audio, c_received
+        );
+        assert!(
+            c_video >= 1,
+            "C expected >=1 video track, got {} (received: {:?})",
+            c_video, c_received
+        );
+
+        // ---- Clean hangup: close all connections ----
+
+        let _ = a_to_b.close().await;
+        let _ = a_to_c.close().await;
+        let _ = b.close().await;
+        let _ = c.close().await;
+
+        // Allow close to propagate
+        tokio::time::sleep(Duration::from_millis(200)).await;
+
+        assert_eq!(
+            a_to_b.connection_state(),
+            PeerConnectionState::Closed,
+            "A→B should be Closed"
+        );
+        assert_eq!(
+            b.connection_state(),
+            PeerConnectionState::Closed,
+            "B should be Closed"
+        );
+        assert_eq!(
+            a_to_c.connection_state(),
+            PeerConnectionState::Closed,
+            "A→C should be Closed"
+        );
+        assert_eq!(
+            c.connection_state(),
+            PeerConnectionState::Closed,
+            "C should be Closed"
+        );
+    }
+
 }

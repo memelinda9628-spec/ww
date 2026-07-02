@@ -50,6 +50,7 @@ pub use signaling::{
     SignalingTransport,
 };
 pub use transport::MatrixCallTransport;
+pub use media::VideoCodec;
 
 /// The type of a WebRTC call.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
